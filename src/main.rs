@@ -7,6 +7,7 @@ use std::io::BufReader;
 use std::io::prelude::*;
 use std::result::Result;
 use rand::Rng;
+use std::io::{self, Write};
 
 macro_rules! md5_F
 {
@@ -25,7 +26,7 @@ macro_rules! md5_H
 
 macro_rules! md5_I
 {
-    ($x: expr, $y: expr, $z: expr)=> ($y ^ ($x | (!$z)))
+    ($x: expr, $y: expr, $z: expr)=> ($y ^ ($x | !$z))
 }
 
 macro_rules! RL {
@@ -40,10 +41,10 @@ macro_rules! RR {
     };
 }
 
-const LOOP_11: u32 = 300;
-const LOOP_12: u32 = 0x20000000;
-const LOOP_21: u32 = 1000;
-const LOOP_22: u32 = 0x4000000;
+const LOOP_11: i32 = 300;
+const LOOP_12: i32 = 0x20000000;
+const LOOP_21: i32 = 1000;
+const LOOP_22: i32 = 0x4000000;
 
 struct state_s {
     A0: u32,
@@ -81,11 +82,26 @@ static mut s: state_s = state_s{
 
 static IV_default: [u32; 4] =  [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476];
 
-fn block1(IV: [u32; 4], mut ct1: i32) -> u8
+static COL0: &str = "\033[G";
+const CTLK: &str = "\033[K";
+
+
+fn callback2(a: i32, b: u32) {
+    println!("Progress: {}.{}", a, b);
+    io::stdout().flush().unwrap();
+}
+
+fn callback4(a: i32, b: u32, c: i32, d: u32) {
+    println!("Progress: {}.{}.{}.{}", a, b, c, d);
+}
+
+fn block1(IV: [u32; 4], mut ct1: i32) -> i32
 {
+    println!("BLOCK 1 START");
     let mut rng = rand::thread_rng();
     let mut goto_flag = 0;
-    let mut cnt:u32 = 0;
+    let mut cnt:i32 = 0;
+    let mut i = 0;
 
     unsafe {
         /* instead of goto block1_again */
@@ -225,14 +241,18 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                     { continue; }
                 break;
             }
-            cnt = 0;
-            for i in 0..LOOP_11
+            cnt = -1;
+            i = -1;
+            loop
             {
-                cnt += 1;
-                goto_flag = 0;
+                i += 1;
+                if i >= LOOP_11
+                {
+                    break;
+                }
                 /* A5 */
                 s.Q0[17] = rng.gen::<u32>() & !(0x80020000 | 0x00008008);
-                s.Q0[17] |= (s.Q0[16] & 0x00008008);
+                s.Q0[17] |= s.Q0[16] & 0x00008008;
                 s.Q1[17] = s.Q0[17] - 0x80000000;
 
                 s.X0[ 1] = RR!(s.Q0[17] - s.Q0[16],  5) - md5_G!(s.Q0[16], s.Q0[15], s.Q0[14])
@@ -240,7 +260,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.X1[ 1] = RR!(s.Q1[17] - s.Q1[16],  5) - md5_G!(s.Q1[16], s.Q1[15], s.Q1[14])
                     - s.Q1[13] - 0xf61e2562;
                 if s.X0[ 1] != s.X1[ 1]
-{ continue; }
+                    { continue; }
 
                 /* D5 */
                 s.Q0[18] = RL!(md5_G!(s.Q0[17], s.Q0[16], s.Q0[15]) + s.Q0[14]
@@ -253,17 +273,17 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[18] = RL!(md5_G!(s.Q1[17], s.Q1[16], s.Q1[15]) + s.Q1[14]
                     + s.X1[ 6] + 0xc040b340,  9) + s.Q1[17];
                 if (s.Q0[18] ^ s.Q1[18]) != 0x80000000
-{ continue; }
+                    { continue; }
 
                 /* C5 */
                 s.Q0[19] = RL!(md5_G!(s.Q0[18], s.Q0[17], s.Q0[16]) + s.Q0[15]
                     + s.X0[11] + 0x265e5a51, 14) + s.Q0[18];
                 if s.Q0[19] & 0x80020000 != 0
-{ continue; }
+                    { continue; }
                 s.Q1[19] = RL!(md5_G!(s.Q1[18], s.Q1[17], s.Q1[16]) + s.Q1[15]
                     + s.X1[11] + 0x265e5a51, 14) + s.Q1[18];
                 if s.Q0[19] - s.Q1[19] != 0x7ffe0000
-{ continue; }
+                    { continue; }
 
                 /* B5 */
                 s.Q0[20] = rng.gen::<u32>() & !0x80000000;
@@ -274,7 +294,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.X1[ 0] = RR!(s.Q1[20] - s.Q1[19], 20) - md5_G!(s.Q1[19], s.Q1[18], s.Q1[17])
                     - s.Q1[16] - 0xe9b6c7aa;
                 if s.X0[ 0] != s.X1[ 0]
-{ continue; }
+                    { continue; }
 
                 s.Q0[ 1] = RL!(md5_F!(IV[1], IV[2], IV[3]) + IV[0]
                     + s.X0[ 0] + 0xd76aa478,  7) + IV[1];
@@ -297,44 +317,44 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.X1[ 4] = RR!(s.Q1[ 5] - s.Q1[ 4],  7) - md5_F!(s.Q1[ 4], s.Q1[ 3], s.Q1[ 2])
                     - s.Q1[ 1] - 0xf57c0faf;
                 if (s.X0[ 4] ^ s.X1[ 4]) != 0x80000000
-{ continue; }
+                    { continue; }
 
                 s.X0[ 5] = RR!(s.Q0[ 6] - s.Q0[ 5], 12) - md5_F!(s.Q0[ 5], s.Q0[ 4], s.Q0[ 3])
                     - s.Q0[ 2] - 0x4787c62a;
                 s.X1[ 5] = RR!(s.Q1[ 6] - s.Q1[ 5], 12) - md5_F!(s.Q1[ 5], s.Q1[ 4], s.Q1[ 3])
                     - s.Q1[ 2] - 0x4787c62a;
                 if s.X0[ 5] != s.X1[ 5]
-{ continue; }
+                    { continue; }
 
                 /* A6 */
                 s.Q0[21] = RL!(md5_G!(s.Q0[20], s.Q0[19], s.Q0[18]) + s.Q0[17]
                     + s.X0[ 5] + 0xd62f105d,  5) + s.Q0[20];
                 if (s.Q0[21] & 0x80020000) != (s.Q0[20] & 0x00020000)
-{ continue; }
+                    { continue; }
                 s.Q1[21] = RL!(md5_G!(s.Q1[20], s.Q1[19], s.Q1[18]) + s.Q1[17]
                     + s.X1[ 5] + 0xd62f105d,  5) + s.Q1[20];
                 if (s.Q0[21] ^ s.Q1[21]) != 0x80000000
-{ continue; }
+                    { continue; }
 
                 /* D6 */
                 s.Q0[22] = RL!(md5_G!(s.Q0[21], s.Q0[20], s.Q0[19]) + s.Q0[18]
                     + s.X0[10] + 0x02441453,  9) + s.Q0[21];
                 if s.Q0[22] & 0x80000000 != 0
-{ continue; }
+                    { continue; }
                 s.Q1[22] = RL!(md5_G!(s.Q1[21], s.Q1[20], s.Q1[19]) + s.Q1[18]
                     + s.X1[10] + 0x02441453,  9) + s.Q1[21];
                 if (s.Q0[22] ^ s.Q1[22]) != 0x80000000
-{ continue; }
+                    { continue; }
 
                 /* C6 */
                 s.Q0[23] = RL!(md5_G!(s.Q0[22], s.Q0[21], s.Q0[20]) + s.Q0[19]
                     + s.X0[15] + 0xd8a1e681, 14) + s.Q0[22];
                 if s.Q0[23] & 0x80000000 != 0
-{ continue; }
+                    { continue; }
                 s.Q1[23] = RL!(md5_G!(s.Q1[22], s.Q1[21], s.Q1[20]) + s.Q1[19]
                     + s.X1[15] + 0xd8a1e681, 14) + s.Q1[22];
                 if s.Q0[23] != s.Q1[23]
-{ continue; }
+                    { continue; }
 
                 /* B6 */
                 s.Q0[24] = RL!(md5_G!(s.Q0[23], s.Q0[22], s.Q0[21]) + s.Q0[20]
@@ -342,7 +362,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[24] = RL!(md5_G!(s.Q1[23], s.Q1[22], s.Q1[21]) + s.Q1[20]
                     + s.X1[ 4] + 0xe7d3fbc8, 20) + s.Q1[23];
                 if s.Q0[24] != s.Q1[24]
-{ continue; }
+                    { continue; }
 
                 /* A7 */
                 s.Q0[25] = RL!(md5_G!(s.Q0[24], s.Q0[23], s.Q0[22]) + s.Q0[21]
@@ -350,7 +370,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[25] = RL!(md5_G!(s.Q1[24], s.Q1[23], s.Q1[22]) + s.Q1[21]
                     + s.X1[ 9] + 0x21e1cde6,  5) + s.Q1[24];
                 if s.Q0[25] != s.Q1[25]
-{ continue; }
+                    { continue; }
 
                         /* D7 */
                         s.Q0[26] = RL!(md5_G!(s.Q0[25], s.Q0[24], s.Q0[23]) + s.Q0[22]
@@ -358,7 +378,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                         s.Q1[26] = RL!(md5_G!(s.Q1[25], s.Q1[24], s.Q1[23]) + s.Q1[22]
                                 + s.X1[14] + 0xc33707d6,  9) + s.Q1[25];
                         if s.Q0[26] != s.Q1[26]
-{ continue; }
+                    { continue; }
 
                 /* C7 */
                 s.Q0[27] = RL!(md5_G!(s.Q0[26], s.Q0[25], s.Q0[24]) + s.Q0[23]
@@ -366,24 +386,40 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[27] = RL!(md5_G!(s.Q1[26], s.Q1[25], s.Q1[24]) + s.Q1[23]
                     + s.X1[ 3] + 0xf4d50d87, 14) + s.Q1[26];
                 if s.Q0[27] != s.Q1[27]
-{ continue; }
+                    { continue; }
                 
-                goto_flag = 1;
                 break;
             }
-            if cnt == (LOOP_11 - 1) && goto_flag == 0
+            if i >= LOOP_11
             {
                 /* return to first loop */
                 continue;
             }
+            println!("DONE");
             ct1 += 1;
             cnt = 0;
-            for i in 0..LOOP_12
+            i = -1;
+            let mut cnt1 = 0;
+            let mut cnt2 = 0;
+            let mut cnt3 = 0;
+            let mut cnt4 = 0;
+            let mut cnt5 = 0;
+            let mut cnt6 = 0;
+            'inner: loop
             {
-                cnt += 1;
-                goto_flag = 0;
+                i += 1;
+                if i >= LOOP_12
+                {
+                    break;
+                }
+                if (i & 0xfffff) == 0
+                {
+                    //callback2(ct1, (i>>20) as u32);
+                    println!("{:?}", i);
+                    println!("{:?} {:?} {:?} {:?} {:?} {:?} {:?}", cnt, cnt1, cnt2, cnt3, cnt4, cnt5, cnt6);
+                }
                 /* B5 */
-                s.Q0[20] ^= (1 << (rng.gen::<u32>() % 31));
+                s.Q0[20] ^= 1 << (rng.gen::<u32>() % 31);
                 s.Q1[20] = s.Q0[20] - 0x80000000;
 
                 s.X0[ 0] = RR!(s.Q0[20] - s.Q0[19], 20) - md5_G!(s.Q0[19], s.Q0[18], s.Q0[17])
@@ -391,66 +427,56 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.X1[ 0] = RR!(s.Q1[20] - s.Q1[19], 20) - md5_G!(s.Q1[19], s.Q1[18], s.Q1[17])
                     - s.Q1[16] - 0xe9b6c7aa;
                 if s.X0[ 0] != s.X1[ 0]
-{ continue; }
+                    { continue 'inner; }
 
-                s.Q0[ 1] = RL!(md5_F!(IV[1], IV[2], IV[3]) + IV[0]
-                    + s.X0[ 0] + 0xd76aa478,  7) + IV[1];
+                
+                s.Q0[ 1] = RL!(md5_F!(IV[1], IV[2], IV[3]) + IV[0] + s.X0[ 0] + 0xd76aa478,  7) + IV[1];
                 s.Q1[ 1] = s.Q0[ 1];
 
-                s.Q0[ 2] = RL!(md5_F!(s.Q0[ 1], IV[1], IV[2]) + IV[3]
-                    + s.X0[ 1] + 0xe8c7b756, 12) + s.Q0[ 1];
+                s.Q0[ 2] = RL!(md5_F!(s.Q0[ 1], IV[1], IV[2]) + IV[3] + s.X0[ 1] + 0xe8c7b756, 12) + s.Q0[ 1];
                 s.Q1[ 2] = s.Q0[ 2];
-                s.X0[ 2] = RR!(s.Q0[ 3] - s.Q0[ 2], 17) - md5_F!(s.Q0[ 2], s.Q0[ 1], IV[1])
-                    - IV[2] - 0x242070db;
+                s.X0[ 2] = RR!(s.Q0[ 3] - s.Q0[ 2], 17) - md5_F!(s.Q0[ 2], s.Q0[ 1], IV[1]) - IV[2] - 0x242070db;
                 s.X1[ 2] = s.X0[ 2];
 
-                s.X0[ 3] = RR!(s.Q0[ 4] - s.Q0[ 3], 22) - md5_F!(s.Q0[ 3], s.Q0[ 2], s.Q0[ 1])
-                    - IV[1] - 0xc1bdceee;
+                s.X0[ 3] = RR!(s.Q0[ 4] - s.Q0[ 3], 22) - md5_F!(s.Q0[ 3], s.Q0[ 2], s.Q0[ 1]) - IV[1] - 0xc1bdceee;
                 s.X1[ 3] = s.X0[ 3];
 
-                s.X0[ 4] = RR!(s.Q0[ 5] - s.Q0[ 4],  7) - md5_F!(s.Q0[ 4], s.Q0[ 3], s.Q0[ 2])
-                    - s.Q0[ 1] - 0xf57c0faf;
-                s.X1[ 4] = RR!(s.Q1[ 5] - s.Q1[ 4],  7) - md5_F!(s.Q1[ 4], s.Q1[ 3], s.Q1[ 2])
-                    - s.Q1[ 1] - 0xf57c0faf;
+                s.X0[ 4] = RR!(s.Q0[ 5] - s.Q0[ 4],  7) - md5_F!(s.Q0[ 4], s.Q0[ 3], s.Q0[ 2]) - s.Q0[ 1] - 0xf57c0faf;
+                s.X1[ 4] = RR!(s.Q1[ 5] - s.Q1[ 4],  7) - md5_F!(s.Q1[ 4], s.Q1[ 3], s.Q1[ 2]) - s.Q1[ 1] - 0xf57c0faf;
                 if (s.X0[ 4] ^ s.X1[ 4]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
+                s.X0[ 5] = RR!(s.Q0[ 6] - s.Q0[ 5], 12) - md5_F!(s.Q0[ 5], s.Q0[ 4], s.Q0[ 3]) - s.Q0[ 2] - 0x4787c62a;
+                s.X1[ 5] = RR!(s.Q1[ 6] - s.Q1[ 5], 12) - md5_F!(s.Q1[ 5], s.Q1[ 4], s.Q1[ 3]) - s.Q1[ 2] - 0x4787c62a;
 
-                s.X0[ 5] = RR!(s.Q0[ 6] - s.Q0[ 5], 12) - md5_F!(s.Q0[ 5], s.Q0[ 4], s.Q0[ 3])
-                    - s.Q0[ 2] - 0x4787c62a;
-                s.X1[ 5] = RR!(s.Q1[ 6] - s.Q1[ 5], 12) - md5_F!(s.Q1[ 5], s.Q1[ 4], s.Q1[ 3])
-                    - s.Q1[ 2] - 0x4787c62a;
                 if s.X0[ 5] != s.X1[ 5]
-{ continue; }
+                    { continue 'inner; }
 
                 /* A6 */
-                s.Q0[21] = RL!(md5_G!(s.Q0[20], s.Q0[19], s.Q0[18]) + s.Q0[17]
-                    + s.X0[ 5] + 0xd62f105d,  5) + s.Q0[20];
+                s.Q0[21] = RL!(md5_G!(s.Q0[20], s.Q0[19], s.Q0[18]) + s.Q0[17] + s.X0[ 5] + 0xd62f105d,  5) + s.Q0[20];
                 if (s.Q0[21] & 0x80020000) != (s.Q0[20] & 0x00020000)
-{ continue; }
-                s.Q1[21] = RL!(md5_G!(s.Q1[20], s.Q1[19], s.Q1[18]) + s.Q1[17]
-                    + s.X1[ 5] + 0xd62f105d,  5) + s.Q1[20];
+                    { continue 'inner; }
+                s.Q1[21] = RL!(md5_G!(s.Q1[20], s.Q1[19], s.Q1[18]) + s.Q1[17] + s.X1[ 5] + 0xd62f105d,  5) + s.Q1[20];
+
                 if (s.Q0[21] ^ s.Q1[21]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* D6 */
-                s.Q0[22] = RL!(md5_G!(s.Q0[21], s.Q0[20], s.Q0[19]) + s.Q0[18]
-                    + s.X0[10] + 0x02441453,  9) + s.Q0[21];
+                s.Q0[22] = RL!(md5_G!(s.Q0[21], s.Q0[20], s.Q0[19]) + s.Q0[18] + s.X0[10] + 0x02441453,  9) + s.Q0[21];
                 if s.Q0[22] & 0x80000000 != 0
-{ continue; }
-                s.Q1[22] = RL!(md5_G!(s.Q1[21], s.Q1[20], s.Q1[19]) + s.Q1[18]
-                    + s.X1[10] + 0x02441453,  9) + s.Q1[21];
+                    { continue 'inner; }
+                s.Q1[22] = RL!(md5_G!(s.Q1[21], s.Q1[20], s.Q1[19]) + s.Q1[18] + s.X1[10] + 0x02441453,  9) + s.Q1[21];
                 if (s.Q0[22] ^ s.Q1[22]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* C6 */
                 s.Q0[23] = RL!(md5_G!(s.Q0[22], s.Q0[21], s.Q0[20]) + s.Q0[19]
                     + s.X0[15] + 0xd8a1e681, 14) + s.Q0[22];
                 if s.Q0[23] & 0x80000000 != 0
-{ continue; }
+                    { continue 'inner; }
                 s.Q1[23] = RL!(md5_G!(s.Q1[22], s.Q1[21], s.Q1[20]) + s.Q1[19]
                     + s.X1[15] + 0xd8a1e681, 14) + s.Q1[22];
                 if s.Q0[23] != s.Q1[23]
-{ continue; }
+                    { continue 'inner; }
 
                 /* B6 */
                 s.Q0[24] = RL!(md5_G!(s.Q0[23], s.Q0[22], s.Q0[21]) + s.Q0[20]
@@ -458,7 +484,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[24] = RL!(md5_G!(s.Q1[23], s.Q1[22], s.Q1[21]) + s.Q1[20]
                     + s.X1[ 4] + 0xe7d3fbc8, 20) + s.Q1[23];
                 if s.Q0[24] != s.Q1[24]
-{ continue; }
+                    { continue 'inner; }
 
                 /* A7 */
                 s.Q0[25] = RL!(md5_G!(s.Q0[24], s.Q0[23], s.Q0[22]) + s.Q0[21]
@@ -466,7 +492,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[25] = RL!(md5_G!(s.Q1[24], s.Q1[23], s.Q1[22]) + s.Q1[21]
                     + s.X1[ 9] + 0x21e1cde6,  5) + s.Q1[24];
                 if s.Q0[25] != s.Q1[25]
-{ continue; }
+                    { continue 'inner; }
 
                 /* D7 */
                 s.Q0[26] = RL!(md5_G!(s.Q0[25], s.Q0[24], s.Q0[23]) + s.Q0[22]
@@ -474,7 +500,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[26] = RL!(md5_G!(s.Q1[25], s.Q1[24], s.Q1[23]) + s.Q1[22]
                     + s.X1[14] + 0xc33707d6,  9) + s.Q1[25];
                 if s.Q0[26] != s.Q1[26]
-{ continue; }
+                    { continue 'inner; }
 
                 /* C7 */
                 s.Q0[27] = RL!(md5_G!(s.Q0[26], s.Q0[25], s.Q0[24]) + s.Q0[23]
@@ -482,7 +508,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[27] = RL!(md5_G!(s.Q1[26], s.Q1[25], s.Q1[24]) + s.Q1[23]
                     + s.X1[ 3] + 0xf4d50d87, 14) + s.Q1[26];
                 if s.Q0[27] != s.Q1[27]
-{ continue; }
+                    { continue 'inner; }
 
                 /* B7 */
                 s.Q0[28] = RL!(md5_G!(s.Q0[27], s.Q0[26], s.Q0[25]) + s.Q0[24]
@@ -490,7 +516,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[28] = RL!(md5_G!(s.Q1[27], s.Q1[26], s.Q1[25]) + s.Q1[24]
                     + s.X1[ 8] + 0x455a14ed, 20) + s.Q1[27];
                 if s.Q0[28] != s.Q1[28]
-{ continue; }
+                    { continue 'inner; }
 
                 /* A8 */
                 s.Q0[29] = RL!(md5_G!(s.Q0[28], s.Q0[27], s.Q0[26]) + s.Q0[25]
@@ -498,7 +524,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[29] = RL!(md5_G!(s.Q1[28], s.Q1[27], s.Q1[26]) + s.Q1[25]
                     + s.X1[13] + 0xa9e3e905,  5) + s.Q1[28];
                 if s.Q0[29] != s.Q1[29]
-{ continue; }
+                    { continue 'inner; }
 
                 /* D8 */
                 s.Q0[30] = RL!(md5_G!(s.Q0[29], s.Q0[28], s.Q0[27]) + s.Q0[26]
@@ -506,7 +532,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[30] = RL!(md5_G!(s.Q1[29], s.Q1[28], s.Q1[27]) + s.Q1[26]
                     + s.X1[ 2] + 0xfcefa3f8,  9) + s.Q1[29];
                 if s.Q0[30] != s.Q1[30]
-{ continue; }
+                    { continue 'inner; }
 
                 /* C8 */
                 s.Q0[31] = RL!(md5_G!(s.Q0[30], s.Q0[29], s.Q0[28]) + s.Q0[27]
@@ -514,7 +540,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[31] = RL!(md5_G!(s.Q1[30], s.Q1[29], s.Q1[28]) + s.Q1[27]
                     + s.X1[ 7] + 0x676f02d9, 14) + s.Q1[30];
                 if s.Q0[31] != s.Q1[31]
-{ continue; }
+                    { continue 'inner; }
 
                 /* B8 */
                 s.Q0[32] = RL!(md5_G!(s.Q0[31], s.Q0[30], s.Q0[29]) + s.Q0[28]
@@ -522,7 +548,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[32] = RL!(md5_G!(s.Q1[31], s.Q1[30], s.Q1[29]) + s.Q1[28]
                     + s.X1[12] + 0x8d2a4c8a, 20) + s.Q1[31];
                 if s.Q0[32] != s.Q1[32]
-{ continue; }
+                    { continue 'inner; }
 
                 /* A9 */
                 s.Q0[33] = RL!(md5_H!(s.Q0[32], s.Q0[31], s.Q0[30]) + s.Q0[29]
@@ -530,7 +556,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[33] = RL!(md5_H!(s.Q1[32], s.Q1[31], s.Q1[30]) + s.Q1[29]
                     + s.X1[ 5] + 0xfffa3942,  4) + s.Q1[32];
                 if s.Q0[33] != s.Q1[33]
-{ continue; }
+                    { continue 'inner; }
 
                 /* D9 */
                 s.Q0[34] = RL!(md5_H!(s.Q0[33], s.Q0[32], s.Q0[31]) + s.Q0[30]
@@ -538,7 +564,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[34] = RL!(md5_H!(s.Q1[33], s.Q1[32], s.Q1[31]) + s.Q1[30]
                     + s.X1[ 8] + 0x8771f681, 11) + s.Q1[33];
                 if s.Q0[34] != s.Q1[34]
-{ continue; }
+                    { continue 'inner; }
 
                 /* C9 */
                 s.Q0[35] = RL!(md5_H!(s.Q0[34], s.Q0[33], s.Q0[32]) + s.Q0[31]
@@ -546,7 +572,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[35] = RL!(md5_H!(s.Q1[34], s.Q1[33], s.Q1[32]) + s.Q1[31]
                     + s.X1[11] + 0x6d9d6122, 16) + s.Q1[34];
                 if (s.Q0[35] ^ s.Q1[35]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* B9 */
                 s.Q0[36] = RL!(md5_H!(s.Q0[35], s.Q0[34], s.Q0[33]) + s.Q0[32]
@@ -554,7 +580,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[36] = RL!(md5_H!(s.Q1[35], s.Q1[34], s.Q1[33]) + s.Q1[32]
                     + s.X1[14] + 0xfde5380c, 23) + s.Q1[35];
                 if (s.Q0[36] ^ s.Q1[36]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* A10 */
                 s.Q0[37] = RL!(md5_H!(s.Q0[36], s.Q0[35], s.Q0[34]) + s.Q0[33]
@@ -562,7 +588,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[37] = RL!(md5_H!(s.Q1[36], s.Q1[35], s.Q1[34]) + s.Q1[33]
                     + s.X1[ 1] + 0xa4beea44,  4) + s.Q1[36];
                 if (s.Q0[37] ^ s.Q1[37]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* D10 */
                 s.Q0[38] = RL!(md5_H!(s.Q0[37], s.Q0[36], s.Q0[35]) + s.Q0[34]
@@ -570,7 +596,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[38] = RL!(md5_H!(s.Q1[37], s.Q1[36], s.Q1[35]) + s.Q1[34]
                     + s.X1[ 4] + 0x4bdecfa9, 11) + s.Q1[37];
                 if (s.Q0[38] ^ s.Q1[38]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* C10 */
                 s.Q0[39] = RL!(md5_H!(s.Q0[38], s.Q0[37], s.Q0[36]) + s.Q0[35]
@@ -578,7 +604,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[39] = RL!(md5_H!(s.Q1[38], s.Q1[37], s.Q1[36]) + s.Q1[35]
                     + s.X1[ 7] + 0xf6bb4b60, 16) + s.Q1[38];
                 if (s.Q0[39] ^ s.Q1[39]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* B10 */
                 s.Q0[40] = RL!(md5_H!(s.Q0[39], s.Q0[38], s.Q0[37]) + s.Q0[36]
@@ -586,7 +612,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[40] = RL!(md5_H!(s.Q1[39], s.Q1[38], s.Q1[37]) + s.Q1[36]
                     + s.X1[10] + 0xbebfbc70, 23) + s.Q1[39];
                 if (s.Q0[40] ^ s.Q1[40]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* A11 */
                 s.Q0[41] = RL!(md5_H!(s.Q0[40], s.Q0[39], s.Q0[38]) + s.Q0[37]
@@ -594,7 +620,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[41] = RL!(md5_H!(s.Q1[40], s.Q1[39], s.Q1[38]) + s.Q1[37]
                     + s.X1[13] + 0x289b7ec6,  4) + s.Q1[40];
                 if (s.Q0[41] ^ s.Q1[41]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* D11 */
                 s.Q0[42] = RL!(md5_H!(s.Q0[41], s.Q0[40], s.Q0[39]) + s.Q0[38]
@@ -602,7 +628,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[42] = RL!(md5_H!(s.Q1[41], s.Q1[40], s.Q1[39]) + s.Q1[38]
                     + s.X1[ 0] + 0xeaa127fa, 11) + s.Q1[41];
                 if (s.Q0[42] ^ s.Q1[42]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* C11 */
                 s.Q0[43] = RL!(md5_H!(s.Q0[42], s.Q0[41], s.Q0[40]) + s.Q0[39]
@@ -610,7 +636,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[43] = RL!(md5_H!(s.Q1[42], s.Q1[41], s.Q1[40]) + s.Q1[39]
                     + s.X1[ 3] + 0xd4ef3085, 16) + s.Q1[42];
                 if (s.Q0[43] ^ s.Q1[43]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* B11 */
                 s.Q0[44] = RL!(md5_H!(s.Q0[43], s.Q0[42], s.Q0[41]) + s.Q0[40]
@@ -618,7 +644,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[44] = RL!(md5_H!(s.Q1[43], s.Q1[42], s.Q1[41]) + s.Q1[40]
                     + s.X1[ 6] + 0x04881d05, 23) + s.Q1[43];
                 if (s.Q0[44] ^ s.Q1[44]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* A12 */
                 s.Q0[45] = RL!(md5_H!(s.Q0[44], s.Q0[43], s.Q0[42]) + s.Q0[41]
@@ -626,7 +652,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[45] = RL!(md5_H!(s.Q1[44], s.Q1[43], s.Q1[42]) + s.Q1[41]
                     + s.X1[ 9] + 0xd9d4d039,  4) + s.Q1[44];
                 if (s.Q0[45] ^ s.Q1[45]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* D12 */
                 s.Q0[46] = RL!(md5_H!(s.Q0[45], s.Q0[44], s.Q0[43]) + s.Q0[42]
@@ -634,7 +660,7 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[46] = RL!(md5_H!(s.Q1[45], s.Q1[44], s.Q1[43]) + s.Q1[42]
                     + s.X1[12] + 0xe6db99e5, 11) + s.Q1[45];
                 if (s.Q0[46] ^ s.Q1[46]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* C12 */
                 s.Q0[47] = RL!(md5_H!(s.Q0[46], s.Q0[45], s.Q0[44]) + s.Q0[43]
@@ -642,137 +668,137 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[47] = RL!(md5_H!(s.Q1[46], s.Q1[45], s.Q1[44]) + s.Q1[43]
                     + s.X1[15] + 0x1fa27cf8, 16) + s.Q1[46];
                 if (s.Q0[47] ^ s.Q1[47]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* B12 */
                 s.Q0[48] = RL!(md5_H!(s.Q0[47], s.Q0[46], s.Q0[45]) + s.Q0[44]
                     + s.X0[ 2] + 0xc4ac5665, 23) + s.Q0[47];
-                if (s.Q0[48] ^ s.Q0[46]) & 0x80000000 != 0
-{ continue; }
+                if ((s.Q0[48] ^ s.Q0[46]) & 0x80000000) != 0
+                    { continue 'inner; }
                 s.Q1[48] = RL!(md5_H!(s.Q1[47], s.Q1[46], s.Q1[45]) + s.Q1[44]
                     + s.X1[ 2] + 0xc4ac5665, 23) + s.Q1[47];
                 if (s.Q0[48] ^ s.Q1[48]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* A13 */
                 s.Q0[49] = RL!(md5_I!(s.Q0[48], s.Q0[47], s.Q0[46]) + s.Q0[45]
                     + s.X0[ 0] + 0xf4292244,  6) + s.Q0[48];
                 if (s.Q0[49] ^ s.Q0[47]) & 0x80000000 != 0
-{ continue; }
+                    { continue 'inner; }
                 s.Q1[49] = RL!(md5_I!(s.Q1[48], s.Q1[47], s.Q1[46]) + s.Q1[45]
                     + s.X1[ 0] + 0xf4292244,  6) + s.Q1[48];
                 if (s.Q0[49] ^ s.Q1[49]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* D13 */
                 s.Q0[50] = RL!(md5_I!(s.Q0[49], s.Q0[48], s.Q0[47]) + s.Q0[46]
                     + s.X0[ 7] + 0x432aff97, 10) + s.Q0[49];
-                if !((s.Q0[50] ^ s.Q0[48]) & 0x80000000) != 0
-{ continue; }
+                if ((s.Q0[50] ^ s.Q0[48]) & 0x80000000) == 0
+                    { continue 'inner; }
                 s.Q1[50] = RL!(md5_I!(s.Q1[49], s.Q1[48], s.Q1[47]) + s.Q1[46]
                     + s.X1[ 7] + 0x432aff97, 10) + s.Q1[49];
                 if (s.Q0[50] ^ s.Q1[50]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* C13 */
                 s.Q0[51] = RL!(md5_I!(s.Q0[50], s.Q0[49], s.Q0[48]) + s.Q0[47]
                     + s.X0[14] + 0xab9423a7, 15) + s.Q0[50];
                 if (s.Q0[51] ^ s.Q0[49]) & 0x80000000 != 0
-{ continue; }
+                    { continue 'inner; }
                 s.Q1[51] = RL!(md5_I!(s.Q1[50], s.Q1[49], s.Q1[48]) + s.Q1[47]
                     + s.X1[14] + 0xab9423a7, 15) + s.Q1[50];
                 if (s.Q0[51] ^ s.Q1[51]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* B13 */
                 s.Q0[52] = RL!(md5_I!(s.Q0[51], s.Q0[50], s.Q0[49]) + s.Q0[48]
                     + s.X0[ 5] + 0xfc93a039, 21) + s.Q0[51];
                 if (s.Q0[52] ^ s.Q0[50]) & 0x80000000 != 0
-{ continue; }
+                    { continue 'inner; }
                 s.Q1[52] = RL!(md5_I!(s.Q1[51], s.Q1[50], s.Q1[49]) + s.Q1[48]
                     + s.X1[ 5] + 0xfc93a039, 21) + s.Q1[51];
                 if (s.Q0[52] ^ s.Q1[52]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* A14 */
                 s.Q0[53] = RL!(md5_I!(s.Q0[52], s.Q0[51], s.Q0[50]) + s.Q0[49]
                     + s.X0[12] + 0x655b59c3,  6) + s.Q0[52];
                 if (s.Q0[53] ^ s.Q0[51]) & 0x80000000 != 0
-{ continue; }
+                    { continue 'inner; }
                 s.Q1[53] = RL!(md5_I!(s.Q1[52], s.Q1[51], s.Q1[50]) + s.Q1[49]
                     + s.X1[12] + 0x655b59c3,  6) + s.Q1[52];
                 if (s.Q0[53] ^ s.Q1[53]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* D14 */
                 s.Q0[54] = RL!(md5_I!(s.Q0[53], s.Q0[52], s.Q0[51]) + s.Q0[50]
                     + s.X0[ 3] + 0x8f0ccc92, 10) + s.Q0[53];
                 if (s.Q0[54] ^ s.Q0[52]) & 0x80000000 != 0
-{ continue; }
+                    { continue 'inner; }
                 s.Q1[54] = RL!(md5_I!(s.Q1[53], s.Q1[52], s.Q1[51]) + s.Q1[50]
                     + s.X1[ 3] + 0x8f0ccc92, 10) + s.Q1[53];
                 if (s.Q0[54] ^ s.Q1[54]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* C14 */
                 s.Q0[55] = RL!(md5_I!(s.Q0[54], s.Q0[53], s.Q0[52]) + s.Q0[51]
                     + s.X0[10] + 0xffeff47d, 15) + s.Q0[54];
                 if (s.Q0[55] ^ s.Q0[53]) & 0x80000000 != 0
-{ continue; }
+                    { continue 'inner; }
                 s.Q1[55] = RL!(md5_I!(s.Q1[54], s.Q1[53], s.Q1[52]) + s.Q1[51]
                     + s.X1[10] + 0xffeff47d, 15) + s.Q1[54];
                 if (s.Q0[55] ^ s.Q1[55]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* B14 */
                 s.Q0[56] = RL!(md5_I!(s.Q0[55], s.Q0[54], s.Q0[53]) + s.Q0[52]
                     + s.X0[ 1] + 0x85845dd1, 21) + s.Q0[55];
                 if (s.Q0[56] ^ s.Q0[54]) & 0x80000000 != 0
-{ continue; }
+                    { continue 'inner; }
                 s.Q1[56] = RL!(md5_I!(s.Q1[55], s.Q1[54], s.Q1[53]) + s.Q1[52]
                     + s.X1[ 1] + 0x85845dd1, 21) + s.Q1[55];
                 if (s.Q0[56] ^ s.Q1[56]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* A15 */
                 s.Q0[57] = RL!(md5_I!(s.Q0[56], s.Q0[55], s.Q0[54]) + s.Q0[53]
                     + s.X0[ 8] + 0x6fa87e4f,  6) + s.Q0[56];
                 if (s.Q0[57] ^ s.Q0[55]) & 0x80000000 != 0
-{ continue; }
+                    { continue 'inner; }
                 s.Q1[57] = RL!(md5_I!(s.Q1[56], s.Q1[55], s.Q1[54]) + s.Q1[53]
                     + s.X1[ 8] + 0x6fa87e4f,  6) + s.Q1[56];
                 if (s.Q0[57] ^ s.Q1[57]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* D15 */
                 s.Q0[58] = RL!(md5_I!(s.Q0[57], s.Q0[56], s.Q0[55]) + s.Q0[54]
                     + s.X0[15] + 0xfe2ce6e0, 10) + s.Q0[57];
                 if (s.Q0[58] ^ s.Q0[56]) & 0x80000000 != 0
-{ continue; }
+                    { continue 'inner; }
                 s.Q1[58] = RL!(md5_I!(s.Q1[57], s.Q1[56], s.Q1[55]) + s.Q1[54]
                     + s.X1[15] + 0xfe2ce6e0, 10) + s.Q1[57];
                 if (s.Q0[58] ^ s.Q1[58]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* C15 */
                 s.Q0[59] = RL!(md5_I!(s.Q0[58], s.Q0[57], s.Q0[56]) + s.Q0[55]
                     + s.X0[ 6] + 0xa3014314, 15) + s.Q0[58];
                 if (s.Q0[59] ^ s.Q0[57]) & 0x80000000 != 0
-{ continue; }
+                    { continue 'inner; }
                 s.Q1[59] = RL!(md5_I!(s.Q1[58], s.Q1[57], s.Q1[56]) + s.Q1[55]
                     + s.X1[ 6] + 0xa3014314, 15) + s.Q1[58];
                 if (s.Q0[59] ^ s.Q1[59]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* B15 */
                 s.Q0[60] = RL!(md5_I!(s.Q0[59], s.Q0[58], s.Q0[57]) + s.Q0[56]
                     + s.X0[13] + 0x4e0811a1, 21) + s.Q0[59];
                 if s.Q0[60] & 0x02000000 != 0
-{ continue; }
+                    { continue 'inner; }
                 s.Q1[60] = RL!(md5_I!(s.Q1[59], s.Q1[58], s.Q1[57]) + s.Q1[56]
                     + s.X1[13] + 0x4e0811a1, 21) + s.Q1[59];
                 if (s.Q0[60] ^ s.Q1[60]) != 0x80000000
-{ continue; }
+                    { continue 'inner; }
 
                 /* A16 */
                 s.Q0[61] = RL!(md5_I!(s.Q0[60], s.Q0[59], s.Q0[58]) + s.Q0[57]
@@ -781,55 +807,62 @@ fn block1(IV: [u32; 4], mut ct1: i32) -> u8
                 s.Q1[61] = RL!(md5_I!(s.Q1[60], s.Q1[59], s.Q1[58]) + s.Q1[57]
                     + s.X1[ 4] + 0xf7537e82,  6) + s.Q1[60];
                 s.A1 = IV[0] + s.Q1[61];
+                
+                /* possible cause */
                 if (s.A0 ^ s.A1) != 0x80000000
-{ continue; }
-
+                    { cnt += 1; continue 'inner; }
+                
                 /* D16 */
                 s.Q0[62] = RL!(md5_I!(s.Q0[61], s.Q0[60], s.Q0[59]) + s.Q0[58]
                     + s.X0[11] + 0xbd3af235, 10) + s.Q0[61];
                 s.D0 = IV[3] + s.Q0[62];
-                if s.D0 & 0x02000000 != 0
-{ continue; }
+                /* possible cause */
+                if (s.D0 & 0x02000000) != 0
+                    { cnt1 += 1; continue 'inner; }
                 s.Q1[62] = RL!(md5_I!(s.Q1[61], s.Q1[60], s.Q1[59]) + s.Q1[58]
                     + s.X1[11] + 0xbd3af235, 10) + s.Q1[61];
                 s.D1 = IV[3] + s.Q1[62];
+                /* possible cause */
                 if (s.D0 - s.D1) != 0x7e000000
-{ continue; }
+                    { cnt2 += 1; continue 'inner; }
 
                 /* C16 */
                 s.Q0[63] = RL!(md5_I!(s.Q0[62], s.Q0[61], s.Q0[60]) + s.Q0[59]
                     + s.X0[ 2] + 0x2ad7d2bb, 15) + s.Q0[62];
                 s.C0 = IV[2] + s.Q0[63];
                 if (s.C0 & 0x86000000) != ((s.D0 & 0x80000000) | 0x02000000)
-{ continue; }
+                    { cnt3 += 1; continue 'inner; }
                 s.Q1[63] = RL!(md5_I!(s.Q1[62], s.Q1[61], s.Q1[60]) + s.Q1[59]
                     + s.X1[ 2] + 0x2ad7d2bb, 15) + s.Q1[62];
                 s.C1 = IV[2] + s.Q1[63];
                 if (s.C0 - s.C1) != 0x7e000000
-{ continue; }
+                    { cnt4 += 1; continue 'inner; }
 
                 /* B16 */
                 s.Q0[64] = RL!(md5_I!(s.Q0[63], s.Q0[62], s.Q0[61]) + s.Q0[60]
                     + s.X0[ 9] + 0xeb86d391, 21) + s.Q0[63];
                 s.B0 = IV[1] + s.Q0[64];
                 if (s.B0 & 0x86000020) != (s.C0 & 0x80000000)
-{ continue; }
+                    { cnt5 += 1; continue 'inner; }
                 s.Q1[64] = RL!(md5_I!(s.Q1[63], s.Q1[62], s.Q1[61]) + s.Q1[60]
                     + s.X1[ 9] + 0xeb86d391, 21) + s.Q1[63];
                 s.B1 = IV[1] + s.Q1[64];
                 if (s.B0 - s.B1) != 0x7e000000
-{ continue; }
-            
-                goto_flag = 1;
+                { 
+                    cnt6 += 1; 
+                    continue 'inner; 
+                }
+                    
                 break;
             }
-            if cnt == (LOOP_12 - 1) && goto_flag == 0
+            if i >= LOOP_12
             {
                 /* return to first loop */
+                println!("RESTART 1 LOOP");
                 continue;
             }
             s.ct1 = ct1;
-            s.ct2 = cnt >> 20;
+            s.ct2 = (cnt >> 20) as u32;
             return 0; 
         }
     }
@@ -848,9 +881,10 @@ const mask22:[u32; 30] = [
 
 fn block2() -> i32
 {
+    println!("BLOCK 2 START");
     let mut rng = rand::thread_rng();
     let mut goto_flag = 0;
-    let mut cnt:u32 = 0;
+    let mut cnt:i32 = 0;
     let mut ct3: i32 = 0;
     let mut it: i32 = 0;
 
@@ -871,7 +905,7 @@ fn block2() -> i32
                 break;
             }
 
-            cnt = 0;
+            cnt = -1;
             for i in 0..10
             {
                 cnt += 1;
@@ -890,12 +924,12 @@ fn block2() -> i32
                 goto_flag = 1;
                 break;
             }
-            if cnt == 9 && goto_flag == 0
+            if cnt >= 9 && goto_flag == 0
             {
                 continue;
             }
             
-            cnt = 0;
+            cnt = -1;
             for i in 0..10
             {
                 cnt += 1;
@@ -910,12 +944,12 @@ fn block2() -> i32
                 s.X1[18] = RR!(s.Q1[ 3] - s.Q1[ 2], 17) - md5_F!(s.Q1[ 2], s.Q1[ 1], s.B1)
                         - s.C1 - 0x242070db;
                 if s.X0[18] != s.X1[18]
-{ continue; }
+                    { continue; }
                 goto_flag = 1;
                 break;
             }
 
-            if cnt == 9 && goto_flag == 0
+            if cnt >= 9 && goto_flag == 0
             {
                 if ct3 == 0
                 {
@@ -934,7 +968,7 @@ fn block2() -> i32
                 continue;
             }
             
-            cnt = 0;
+            cnt = -1;
             for i in 0..10
             {
                 cnt += 1;
@@ -949,17 +983,17 @@ fn block2() -> i32
                 s.X1[19] = RR!(s.Q1[ 4] - s.Q1[ 3], 22) - md5_F!(s.Q1[ 3], s.Q1[ 2], s.Q1[ 1])
                         - s.B1 - 0xc1bdceee;
                 if s.X0[19] != s.X1[19]
-{ continue; }
+                    { continue; }
                 goto_flag = 1;
                 break;
             }
 
-            if cnt == 9 && goto_flag == 0
+            if cnt >= 9 && goto_flag == 0
             {
                 continue;
             }
             
-            cnt = 0;
+            cnt = -1;
             for i in 0..10
             {
                 cnt += 1;
@@ -968,19 +1002,19 @@ fn block2() -> i32
                 s.Q0[ 5] = (rng.gen::<u32>() | 0x482f0e50) & !0xb41011af;
                 s.Q1[ 5] = s.Q0[ 5] - 0x7ffffcbf;
         
-                        s.X0[20] = RR!(s.Q0[ 5] - s.Q0[ 4],  7) - md5_F!(s.Q0[ 4], s.Q0[ 3], s.Q0[ 2])
-                                - s.Q0[ 1] - 0xf57c0faf;
-                        s.X1[20] = RR!(s.Q1[ 5] - s.Q1[ 4],  7) - md5_F!(s.Q1[ 4], s.Q1[ 3], s.Q1[ 2])
-                                - s.Q1[ 1] - 0xf57c0faf;
-                        if (s.X0[20] ^ s.X1[20]) != 0x80000000
-{ continue; }
+                s.X0[20] = RR!(s.Q0[ 5] - s.Q0[ 4],  7) - md5_F!(s.Q0[ 4], s.Q0[ 3], s.Q0[ 2])
+                        - s.Q0[ 1] - 0xf57c0faf;
+                s.X1[20] = RR!(s.Q1[ 5] - s.Q1[ 4],  7) - md5_F!(s.Q1[ 4], s.Q1[ 3], s.Q1[ 2])
+                        - s.Q1[ 1] - 0xf57c0faf;
+                if (s.X0[20] ^ s.X1[20]) != 0x80000000
+                    { continue; }
                 goto_flag = 1;
                 break;
             }
-            if cnt == 9 && goto_flag == 0
+            if cnt >= 9 && goto_flag == 0
                 { continue; }
         
-            cnt = 0;
+            cnt = -1;
             for i in 0..10
             {
                 cnt += 1;
@@ -994,14 +1028,14 @@ fn block2() -> i32
                         s.X1[21] = RR!(s.Q1[ 6] - s.Q1[ 5], 12) - md5_F!(s.Q1[ 5], s.Q1[ 4], s.Q1[ 3])
                                 - s.Q1[ 2] - 0x4787c62a;
                         if s.X0[21] != s.X1[21]
-{ continue; }
+                            { continue; }
                 goto_flag = 1;
                 break;
             }
-            if cnt == 9 && goto_flag == 0
+            if cnt >= 9 && goto_flag == 0
                 { continue; }
         
-            cnt = 0;
+            cnt = -1;
             for i in 0..10
             {
                 cnt += 1;
@@ -1016,15 +1050,15 @@ fn block2() -> i32
                 s.X1[22] = RR!(s.Q1[ 7] - s.Q1[ 6], 17) - md5_F!(s.Q1[ 6], s.Q1[ 5], s.Q1[ 4])
                     - s.Q1[ 3] - 0xa8304613;
                 if s.X0[22] != s.X1[22]
-{ continue; }
+                    { continue; }
                 goto_flag = 1;
                 break;
             }
-            if cnt == 9 && goto_flag == 0
+            if cnt >= 9 && goto_flag == 0
                 { continue; }
         
             
-            cnt = 0;
+            cnt = -1;
             for i in 0..10
             {
                 cnt += 1;
@@ -1039,14 +1073,14 @@ fn block2() -> i32
                 s.X1[23] = RR!(s.Q1[ 8] - s.Q1[ 7], 22) - md5_F!(s.Q1[ 7], s.Q1[ 6], s.Q1[ 5])
                     - s.Q1[ 4] - 0xfd469501;
                 if s.X0[23] != s.X1[23]
-{ continue; }
+                    { continue; }
                 goto_flag = 1;
                 break;
             }
-            if cnt == 9 && goto_flag == 0
+            if cnt >= 9 && goto_flag == 0
                 { continue; }
             
-            cnt = 0;
+            cnt = -1;
             for i in 0..10
             {
                 cnt += 1;
@@ -1065,10 +1099,10 @@ fn block2() -> i32
                 goto_flag = 1;
                 break;
             }
-            if cnt == 9 && goto_flag == 0
+            if cnt >= 9 && goto_flag == 0
                 { continue; }
         
-            cnt = 0;
+            cnt = -1;
             for i in 0..10
             {
                 cnt += 1;
@@ -1086,10 +1120,10 @@ fn block2() -> i32
                 goto_flag = 1;
                 break;
             }
-            if cnt == 9 && goto_flag == 0
+            if cnt >= 9 && goto_flag == 0
                 { continue; }
         
-            cnt = 0;
+            cnt = -1;
             for i in 0..10
             {
                 cnt += 1;
@@ -1108,10 +1142,10 @@ fn block2() -> i32
                 goto_flag = 1;
                 break;
             }
-            if cnt == 9 && goto_flag == 0
+            if cnt >= 9 && goto_flag == 0
                 { continue; }
         
-            cnt = 0;
+            cnt = -1;
             for i in 0..10
             {
                 cnt += 1;
@@ -1130,11 +1164,11 @@ fn block2() -> i32
                 goto_flag = 1;
                 break;
             }
-            if cnt == 9 && goto_flag == 0
+            if cnt >= 9 && goto_flag == 0
                 { continue; }
         
             
-            cnt = 0;
+            cnt = -1;
             for i in 0..10
             {
                 cnt += 1;
@@ -1152,10 +1186,10 @@ fn block2() -> i32
                 goto_flag = 1;
                 break;
             }
-            if cnt == 9 && goto_flag == 0
+            if cnt >= 9 && goto_flag == 0
                 { continue; }
         
-            cnt = 0;
+            cnt = -1;
             for i in 0..10
             {
                 cnt += 1;
@@ -1173,10 +1207,10 @@ fn block2() -> i32
                 goto_flag = 1;
                 break;
             }
-            if cnt == 9 && goto_flag == 0
+            if cnt >= 9 && goto_flag == 0
                 { continue; }
         
-            cnt = 0;
+            cnt = -1;
             for i in 0..10
             {
                 cnt += 1;
@@ -1194,10 +1228,10 @@ fn block2() -> i32
                 goto_flag = 1;
                 break;
             }
-            if cnt == 9 && goto_flag == 0
+            if cnt >= 9 && goto_flag == 0
                 { continue; }
         
-            cnt = 0;
+            cnt = -1;
             for i in 0..LOOP_21
             {
                 cnt += 1;
@@ -1269,15 +1303,19 @@ fn block2() -> i32
                 break;
             }
             
-            if cnt == (LOOP_21 - 1) && goto_flag == 0
+            if cnt >= (LOOP_21 - 1) && goto_flag == 0
                 { continue; }
         
             ct3 += 1;
-            cnt = 0;
+            cnt = -1;
             for i in 0..LOOP_22
             {
                 cnt += 1;
                 goto_flag = 0;
+                if (i & 0xfffff) == 0 
+                {
+                    callback4(s.ct1, s.ct2, ct3, (i>>20) as u32);
+                }
         
                         /* B4 */
                         s.Q0[16] ^= mask22[rng.gen::<usize>() % 30];
@@ -1717,36 +1755,62 @@ fn block2() -> i32
                 goto_flag = 1;
                 break;
             }
-            if cnt == (LOOP_22 - 1) && goto_flag == 0
+            if cnt >= (LOOP_22 - 1) && goto_flag == 0
                 { continue; }
             return 0;
         }
     }
 }
 
-/*
-fn md5_init_ctx(ctx: &mut md5_ctx)
+/* return 0 on success, 1 if interrupt requested */
+fn md5coll_with_iv(IV: [u32; 4], m0: [u32; 32], m1: [u32; 32]) -> i32
 {
-  ctx.A = 0x67452301;
-  ctx.B = 0xefcdab89;
-  ctx.C = 0x98badcfe;
-  ctx.D = 0x10325476;
+    let mut r: i32;
+    let mut ct1: i32 = 0;
+  
+    loop
+    {
+        r = block1(IV, ct1);
+        if r == 1
+        {
+            return 1;
+        }
 
-  ctx.total[0] = 0;
-  ctx.total[1] = 0;
-  ctx.buflen = 0;
+        r = block2();
+        if r==1
+        {
+            return 1;
+        }
+        else if r == -1
+        {
+            unsafe
+            {
+                ct1 = s.ct1;
+            }
+            continue;
+        }
+        else
+        {
+            break;
+        }
+    }
+    //memcpy(m0, s.X0, 128);
+    //memcpy(m1, s.X1, 128);
+    unsafe
+    {
+        println!("X0");
+        for i in 0..32
+        {
+            println!("0x{:X}", s.X0[i]);
+        }
+        println!("X1");
+        for i in 0..32
+        {
+            println!("0x{:X}", s.X1[i]);
+        }
+    }
+    return 0;
 }
-
-
-fn find_iv(file: & String, IV: &mut [u32; 4]) -> Result<(), std::io::ERR!or>
-{
-    //let mut buf_reader = BufReader::new(file);
-    let mut buf = fs::read(file)?;
-    //md5_init_ctx(&mut ctx);
-
-    Ok(())
-}
-*/
 
 fn main() -> std::io::Result<()>
 {
@@ -1759,6 +1823,8 @@ fn main() -> std::io::Result<()>
     let mut a: u32 = 5;
     let mut IV : [u32; 4] = [0; 4];
     //find_iv(filename, &mut IV);
-    block1(IV_default, 0);
+    let m0: [u32; 32] = [0; 32];
+    let m1: [u32; 32] = [0; 32];
+    md5coll_with_iv(IV_default, m0, m1);
     Ok(())
 }
