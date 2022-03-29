@@ -98,25 +98,25 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
         'loop_1: loop
         {
             /* c1 */
-            s.q0[3] = rand_arr[0] & !0x00800040;
+            s.q0[3] = rng.gen::<u32>() & !0x00800040;
             s.q1[3] = s.q0[3];
 
             /* b1 */
-            s.q0[4] = (rand_arr[1] | 0x80080800) & !(0x00800040 | 0x0077f780);
+            s.q0[4] = (rng.gen::<u32>() | 0x80080800) & !(0x00800040 | 0x0077f780);
             s.q0[4] |= (s.q0[3] & 0x0077f780);
             s.q1[4] = s.q0[4];
 
             /* A2 */
-            s.q0[5] = (rand_arr[2] | 0x88400025) & !0x02bfffc0;
+            s.q0[5] = (rng.gen::<u32>() | 0x88400025) & !0x02bfffc0;
             s.q1[5] = s.q0[5] - 0x00000040;
 
             /* D2 */
-            s.q0[6] = (rand_arr[3] | 0x027fbc41) & !(0x888043a4 | 0x7500001a);
+            s.q0[6] = (rng.gen::<u32>() | 0x027fbc41) & !(0x888043a4 | 0x7500001a);
             s.q0[6] |= (s.q0[5] & 0x7500001a);
             s.q1[6] = s.q0[6] - 0x7f800040;
 
             /* C2 */
-            s.q0[7] = (rand_arr[4] | 0x03fef820) & !0xfc0107df;
+            s.q0[7] = (rng.gen::<u32>() | 0x03fef820) & !0xfc0107df;
             s.q1[7] = s.q0[7] - 0x07800041;
 
             s.x0[6] = RR!(s.q0[7] - s.q0[6], 17) - md5_F!(s.q0[6], s.q0[5], s.q0[4])
@@ -129,7 +129,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             }
 
             /* B2 */
-            s.q0[8] = (rand_arr[5] | 0x01910540) & !0xfe0eaabf;
+            s.q0[8] = (rng.gen::<u32>() | 0x01910540) & !0xfe0eaabf;
             s.q1[8] = s.q0[8] - 0x00827fff;
             
             s.x0[7] = RR!(s.q0[8] - s.q0[7], 22) - md5_F!(s.q0[7], s.q0[6], s.q0[5])
@@ -142,7 +142,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             }
 
             /* A3 */
-            s.q0[9] = (rand_arr[6] | 0xfb102f3d) & !(0x040f80c2 | 0x00001000);
+            s.q0[9] = (rng.gen::<u32>() | 0xfb102f3d) & !(0x040f80c2 | 0x00001000);
             s.q0[9] |= (s.q0[8] & 0x00001000);
             s.q1[9] = s.q0[9] - 0x8000003f;
 
@@ -156,7 +156,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             }
 
             /* D3 */
-            s.q0[10] = (rand_arr[7] | 0x401f9040) & !0x80802183;
+            s.q0[10] = (rng.gen::<u32>() | 0x401f9040) & !0x80802183;
             s.q1[10] = s.q0[10] - 0x7ffff000;
 
             s.x0[9] = RR!(s.q0[10] - s.q0[9], 12) - md5_F!(s.q0[9], s.q0[8], s.q0[7])
@@ -169,7 +169,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             }
 
             /* C3 */
-            s.q0[11] = (rand_arr[8] | 0x000180c2) & !(0xc00e3101 | 0x00004000);
+            s.q0[11] = (rng.gen::<u32>() | 0x000180c2) & !(0xc00e3101 | 0x00004000);
             s.q0[11] |= (s.q0[10] & 0x00004000);
             s.q1[11] = s.q0[11] - 0x40000000;
 
@@ -183,7 +183,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             }
 
             /* B3 */
-            s.q0[12] = (rand_arr[9] | 0x00081100) & !(0xc007e080 | 0x03000000);
+            s.q0[12] = (rng.gen::<u32>() | 0x00081100) & !(0xc007e080 | 0x03000000);
             s.q0[12] |= (s.q0[11] & 0x03000000);
             s.q1[12] = s.q0[12] - 0x80002080;
             
@@ -197,7 +197,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             }
 
             /* A4 */
-            s.q0[13] = (rand_arr[10] | 0x410fe008) & !0x82000180;
+            s.q0[13] = (rng.gen::<u32>() | 0x410fe008) & !0x82000180;
             s.q1[13] = s.q0[13] - 0x7f000000;
 
             s.x0[12] = RR!(s.q0[13] - s.q0[12],  7) - md5_F!(s.q0[12], s.q0[11], s.q0[10])
@@ -210,7 +210,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             }
 
             /* D4 */
-            s.q0[14] = (rand_arr[11] | 0x000be188) & !0xa3040000;
+            s.q0[14] = (rng.gen::<u32>() | 0x000be188) & !0xa3040000;
             s.q1[14] = s.q0[14] - 0x80000000;
 
             s.x0[13] = RR!(s.q0[14] - s.q0[13], 12) - md5_F!(s.q0[13], s.q0[12], s.q0[11])
@@ -223,7 +223,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             }
 
             /* C4 */
-            s.q0[15] = (rand_arr[12] | 0x21008000) & !0x82000008;
+            s.q0[15] = (rng.gen::<u32>() | 0x21008000) & !0x82000008;
             s.q1[15] = s.q0[15] - 0x80007ff8;
 
             s.x0[14] = RR!(s.q0[15] - s.q0[14], 17) - md5_F!(s.q0[14], s.q0[13], s.q0[12])
@@ -237,7 +237,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
 
 
             /* B4 */
-            s.q0[16] = (rand_arr[13] | 0x20000000) & !0x80000000;
+            s.q0[16] = (rng.gen::<u32>() | 0x20000000) & !0x80000000;
             s.q1[16] = s.q0[16] - 0xa0000000;
 
             s.x0[15] = RR!(s.q0[16] - s.q0[15], 22) - md5_F!(s.q0[15], s.q0[14], s.q0[13])
@@ -259,7 +259,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 continue 'block1_again;
             }
             /* A5 */
-            s.q0[17] = rand_arr[14] & !(0x80020000 | 0x00008008);
+            s.q0[17] = rng.gen::<u32>() & !(0x80020000 | 0x00008008);
             s.q0[17] |= (s.q0[16] & 0x00008008);
             s.q1[17] = s.q0[17] - 0x80000000;
 
@@ -301,7 +301,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             }
 
             /* B5 */
-            s.q0[20] = rand_arr[15] & !0x80000000;
+            s.q0[20] = rng.gen::<u32>() & !0x80000000;
             s.q1[20] = s.q0[20] - 0x80000000;
 
             s.x0[0] = RR!(s.q0[20] - s.q0[19], 20) - md5_G!(s.q0[19], s.q0[18], s.q0[17])
@@ -456,8 +456,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 //  println!("{:?} {:?} {:?} {:?} {:?} {:?} {:?}", cnt, cnt1, cnt2, cnt3, cnt4, cnt5, cnt6);
             }
             /* B5 */
-            //s.q0[20] ^= (1 << (rng.gen::<u32>() % 31));
-            s.q0[20] = 886608102;
+            s.q0[20] ^= (1 << (rng.gen::<u32>() % 31));
             s.q1[20] = s.q0[20] - 0x80000000;
 
             s.x0[0] = RR!(s.q0[20] - s.q0[19], 20) - md5_G!(s.q0[19], s.q0[18], s.q0[17])
@@ -1091,7 +1090,7 @@ fn block2(s: &mut StateS) -> i32
         loop
         {
             /* a1 */
-            s.q0[1] = (rand_arr[0] | 0x84200000) & !0x0a000820;
+            s.q0[1] = (rng.gen::<u32>() | 0x84200000) & !0x0a000820;
             s.q1[1] = s.q0[1] - 0x7e000000;
             s.x0[16] = RR!(s.q0[1] - s.b0,  7) - md5_F!(s.b0, s.c0, s.d0) - s.a0 - 0xd76aa478;
             s.x1[16] = RR!(s.q1[1] - s.b1,  7) - md5_F!(s.b1, s.c1, s.d1) - s.a1 - 0xd76aa478;
@@ -1111,7 +1110,7 @@ fn block2(s: &mut StateS) -> i32
                 continue 'block2_again;
             }
             /* d1 */
-            s.q0[2] = (rand_arr[1] | 0x8c000800) & !(0x02208026 | 0x701f10c0);
+            s.q0[2] = (rng.gen::<u32>() | 0x8c000800) & !(0x02208026 | 0x701f10c0);
             s.q0[2] |= s.q0[1] & 0x701f10c0;
             s.q1[2] = s.q0[2] - 0x7dffffe0;
     
@@ -1150,7 +1149,7 @@ fn block2(s: &mut StateS) -> i32
                 continue 'block2_again;
             }
             /* c1 */
-            s.q0[3] = (rand_arr[2] | 0xbe1f0966) & !(0x40201080 | 0x00000018);
+            s.q0[3] = (rng.gen::<u32>() | 0xbe1f0966) & !(0x40201080 | 0x00000018);
             s.q0[3] |= s.q0[2] & 0x00000018;
             s.q1[3] = s.q0[3] - 0x7dfef7e0;
     
@@ -1174,7 +1173,7 @@ fn block2(s: &mut StateS) -> i32
                 continue 'block2_again;
             }
             /* b1 */
-            s.q0[4] = (rand_arr[3] | 0xba040010) & !(0x443b19ee | 0x00000601);
+            s.q0[4] = (rng.gen::<u32>() | 0xba040010) & !(0x443b19ee | 0x00000601);
             s.q0[4] |= s.q0[3] & 0x00000601;
             s.q1[4] = s.q0[4] - 0x7dffffe2;
     
@@ -1198,7 +1197,7 @@ fn block2(s: &mut StateS) -> i32
                 continue 'block2_again;
             }
             /* A2 */
-            s.q0[5] = (rand_arr[4] | 0x482f0e50) & !0xb41011af;
+            s.q0[5] = (rng.gen::<u32>() | 0x482f0e50) & !0xb41011af;
             s.q1[5] = s.q0[5] - 0x7ffffcbf;
     
             s.x0[20] = RR!(s.q0[5] - s.q0[4],  7) - md5_F!(s.q0[4], s.q0[3], s.q0[2])
@@ -1221,7 +1220,7 @@ fn block2(s: &mut StateS) -> i32
                 continue 'block2_again;
             }
             /* D2 */
-            s.q0[6] = (rand_arr[5] | 0x04220c56) & !0x9a1113a9;
+            s.q0[6] = (rng.gen::<u32>() | 0x04220c56) & !0x9a1113a9;
             s.q1[6] = s.q0[6] - 0x80110000;
     
             s.x0[21] = RR!(s.q0[6] - s.q0[5], 12) - md5_F!(s.q0[5], s.q0[4], s.q0[3])
@@ -1244,7 +1243,7 @@ fn block2(s: &mut StateS) -> i32
                 continue 'block2_again;
             }
             /* C2 */
-            s.q0[7] = (rand_arr[6] | 0x96011e01) & !(0x083201c0 | 0x01808000);
+            s.q0[7] = (rng.gen::<u32>() | 0x96011e01) & !(0x083201c0 | 0x01808000);
             s.q0[7] |= s.q0[6] & 0x01808000;
             s.q1[7] = s.q0[7] - 0x88000040;
     
@@ -1268,7 +1267,7 @@ fn block2(s: &mut StateS) -> i32
                 continue 'block2_again;
             }
             /* B2 */
-            s.q0[8] = (rand_arr[7] | 0x843283c0) & !(0x1b810001 | 0x00000002);
+            s.q0[8] = (rng.gen::<u32>() | 0x843283c0) & !(0x1b810001 | 0x00000002);
             s.q0[8] |= s.q0[7] & 0x00000002;
             s.q1[8] = s.q0[8] - 0x80818000;
     
@@ -1292,7 +1291,7 @@ fn block2(s: &mut StateS) -> i32
                 continue 'block2_again;
             }
             /* A3 */
-            s.q0[9] = (rand_arr[8] | 0x9c0101c1) & !(0x03828202 | 0x00001000);
+            s.q0[9] = (rng.gen::<u32>() | 0x9c0101c1) & !(0x03828202 | 0x00001000);
             s.q0[9] |= s.q0[8] & 0x00001000;
             s.q1[9] = s.q0[9] - 0x7fffffbf;
     
@@ -1316,7 +1315,7 @@ fn block2(s: &mut StateS) -> i32
                 continue 'block2_again;
             }
             /* D3 */
-            s.q0[10] = (rand_arr[9] | 0x878383c0) & !0x00041003;
+            s.q0[10] = (rng.gen::<u32>() | 0x878383c0) & !0x00041003;
             s.q1[10] = s.q0[10] - 0x7ffff000;
     
             s.x0[25] = RR!(s.q0[10] - s.q0[9], 12) - md5_F!(s.q0[9], s.q0[8], s.q0[7])
@@ -1339,7 +1338,7 @@ fn block2(s: &mut StateS) -> i32
                 continue 'block2_again;
             }
             /* C3 */
-            s.q0[11] = (rand_arr[10] | 0x800583c3) & !(0x00021000 | 0x00086000);
+            s.q0[11] = (rng.gen::<u32>() | 0x800583c3) & !(0x00021000 | 0x00086000);
             s.q0[11] |= s.q0[10] & 0x00086000;
             s.q1[11] = s.q0[11] - 0x80000000;
     
@@ -1363,7 +1362,7 @@ fn block2(s: &mut StateS) -> i32
                 continue 'block2_again;
             }
             /* B3 */
-            s.q0[12] = (rand_arr[11] | 0x80081080) & !(0x0007e000 | 0x7f000000);
+            s.q0[12] = (rng.gen::<u32>() | 0x80081080) & !(0x0007e000 | 0x7f000000);
             s.q0[12] |= s.q0[11] & 0x7f000000;
             s.q1[12] = s.q0[12] - 0x80002080;
     
@@ -1387,7 +1386,7 @@ fn block2(s: &mut StateS) -> i32
                 continue 'block2_again;
             }
             /* A4 */
-            s.q0[13] = (rand_arr[12] | 0x3f0fe008) & !0x80000080;
+            s.q0[13] = (rng.gen::<u32>() | 0x3f0fe008) & !0x80000080;
             s.q1[13] = s.q0[13] - 0x7f000000;
     
             s.x0[28] = RR!(s.q0[13] - s.q0[12],  7) - md5_F!(s.q0[12], s.q0[11], s.q0[10])
@@ -1410,7 +1409,7 @@ fn block2(s: &mut StateS) -> i32
                 continue 'block2_again;
             }
             /* D4 */
-            s.q0[14] = (rand_arr[13] | 0x400be088) & !0xbf040000;
+            s.q0[14] = (rng.gen::<u32>() | 0x400be088) & !0xbf040000;
             s.q1[14] = s.q0[14] - 0x80000000;
     
             s.x0[29] = RR!(s.q0[14] - s.q0[13], 12) - md5_F!(s.q0[13], s.q0[12], s.q0[11])
@@ -1433,7 +1432,7 @@ fn block2(s: &mut StateS) -> i32
                 continue 'block2_again;
             }
             /* C4 */
-            s.q0[15] = (rand_arr[14] | 0x7d000000) & !0x82008008;
+            s.q0[15] = (rng.gen::<u32>() | 0x7d000000) & !0x82008008;
             s.q1[15] = s.q0[15] - 0x7fff7ff8;
     
             s.x0[30] = RR!(s.q0[15] - s.q0[14], 17) - md5_F!(s.q0[14], s.q0[13], s.q0[12])
@@ -1456,7 +1455,7 @@ fn block2(s: &mut StateS) -> i32
                 continue 'block2_again;
             }
             /* B4 */
-            s.q0[16] = (rand_arr[15] | 0x20000000) & !0x80000000;
+            s.q0[16] = (rng.gen::<u32>() | 0x20000000) & !0x80000000;
             s.q1[16] = s.q0[16] - 0xa0000000;
     
             s.x0[31] = RR!(s.q0[16] - s.q0[15], 22) - md5_F!(s.q0[15], s.q0[14], s.q0[13])
@@ -1556,8 +1555,7 @@ fn block2(s: &mut StateS) -> i32
             }
     
             /* B4 */
-            //s.q0[16] ^= mask22[rng.gen::<usize>() % 30];
-            s.q0[16] = 573945741;
+            s.q0[16] ^= mask22[rng.gen::<usize>() % 30];
             s.q1[16] = s.q0[16] - 0xa0000000;
 
             s.x0[31] = RR!(s.q0[16] - s.q0[15], 22) - md5_F!(s.q0[15], s.q0[14], s.q0[13])
