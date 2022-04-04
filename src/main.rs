@@ -6,8 +6,9 @@ use std::fs::File;
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::result::Result;
-use rand::{Rng,SeedableRng};
-use rand::rngs::StdRng;
+use std::io::prelude::*;
+use std::time::SystemTime;
+use rand::Rng;
 use std::io::{self, Write};
 use std::{process, thread, iter};
 
@@ -74,25 +75,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
     let mut rng = rand::thread_rng();
     let mut cnt:i32;
     let mut i:i32;
-    println!("{:?} {:?}", rng.gen::<u32>(), rng.gen::<u32>());
-    let rand_arr: [u32; 16] = [624373811,
-                                2088533051,
-                                16313804,
-                                1906178774,
-                                1444401697,
-                                538793990,
-                                1513199138,
-                                1003925344,
-                                1324987654,
-                                209079516,
-                                1694804360,
-                                532383565,
-                                599986987,
-                                1435564660,
-                                492230460,
-                                1314485900];
 
-    /* instead of goto block1_again */
     'block1_again: loop
     {
         'loop_1: loop
@@ -431,39 +414,25 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
 
             break;
         }
-        println!("DONE");
         ct1 += 1;
         cnt = 0;
         i = -1;
-        let mut cnt1 = 0;
-        let mut cnt2 = 0;
-        let mut cnt3 = 0;
-        let mut cnt4 = 0;
-        let mut cnt5 = 0;
-        let mut cnt6 = 0;
         'loop_12: loop
         {
             i += 1;
             if i as u32 == LOOP_12
             {
-                println!("RESTART 1 LOOP");
                 continue 'block1_again;
             }
-            if (i & 0xfffff) == 0
-            {
-                //callback2(ct1, (i>>20) as u32);
-                println!("{:?}", i);
-                //  println!("{:?} {:?} {:?} {:?} {:?} {:?} {:?}", cnt, cnt1, cnt2, cnt3, cnt4, cnt5, cnt6);
-            }
             /* B5 */
-            s.q0[20] ^= (1 << (rng.gen::<u32>() % 31));
+            s.q0[20] ^= 1 << (rng.gen::<u32>() % 31);
             s.q1[20] = s.q0[20] - 0x80000000;
 
             s.x0[0] = RR!(s.q0[20] - s.q0[19], 20) - md5_G!(s.q0[19], s.q0[18], s.q0[17])
                 - s.q0[16] - 0xe9b6c7aa;
             s.x1[0] = RR!(s.q1[20] - s.q1[19], 20) - md5_G!(s.q1[19], s.q1[18], s.q1[17])
                 - s.q1[16] - 0xe9b6c7aa;
-            if(s.x0[0] != s.x1[0])
+            if s.x0[0] != s.x1[0]
             {
                 continue 'loop_12;
             }
@@ -487,7 +456,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 - s.q0[1] - 0xf57c0faf;
             s.x1[4] = RR!(s.q1[5] - s.q1[4],  7) - md5_F!(s.q1[4], s.q1[3], s.q1[2])
                 - s.q1[1] - 0xf57c0faf;
-            if((s.x0[4] ^ s.x1[4]) != 0x80000000)
+            if (s.x0[4] ^ s.x1[4]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -904,7 +873,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             }
             s.q1[56] = RL!(md5_I!(s.q1[55], s.q1[54], s.q1[53]) + s.q1[52]
                 + s.x1[1] + 0x85845dd1, 21) + s.q1[55];
-            if((s.q0[56] ^ s.q1[56]) != 0x80000000)
+            if (s.q0[56] ^ s.q1[56]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -1030,21 +999,6 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
         s.ct1 = ct1;
         s.ct2 = (cnt >> 20) as u32;
         println!("BLOCK 1 FINISH");
-        /*
-        for i in 0..65
-        {
-            println!("q0 {:?} {:?}", i, s.q0[i]);
-            println!("q1 {:?} {:?}", i, s.q1[i]);
-        }
-        for i in 0..32
-        {
-            println!("x0 {:?} {:?}", i, s.x0[i]);
-            println!("x1 {:?} {:?}", i, s.x1[i]);
-        }
-        println!("{:?} {:?} {:?} {:?}", s.a0, s.b0, s.c0, s.d0);
-        println!("{:?} {:?} {:?} {:?}", s.a1, s.b1, s.c1, s.d1);
-        process::exit(0);
-        */
         return 0; 
     }
 }
@@ -1067,22 +1021,6 @@ fn block2(s: &mut StateS) -> i32
     let mut ct3: i32 = 0;
     let mut it: i32 = 0;
     let mut i: i32;
-    let rand_arr: [u32; 16] = [2016518672,
-                                537986824,
-                                530654052,
-                                1527568073,
-                                1528948999,
-                                1649913188,
-                                213458279,
-                                1100963483,
-                                1731655375,
-                                2006631712,
-                                250094253,
-                                616636233,
-                                2101600088,
-                                1837250488,
-                                1586486182,
-                                739899356];
 
     /* block2_again */
     'block2_again: loop
@@ -1133,16 +1071,11 @@ fn block2(s: &mut StateS) -> i32
             {
                 if ct3 == 0
                 {
-                    /* sometimes block1() returns a state that
-                    never gets past this point, causing
-                    block2() to hang forever. Try to detect
-                    this and fail (emergency exit). One example
-                    where this happens is the initial vector
-                    0x874587a2 0xf09dfbdf 0x17732fb1 0x9299e527
-                    with random seed 2. */
+                    /* Try to predict a state in which block 2 is impossible to achieve and return to block 1 */
                     it += 1;
                     if it >= 10000
                     {
+                        println!("BLOCK 2 FAIL, RESTARTING BLOCK 1");
                         return -1;
                     }
                 }
@@ -2105,20 +2038,16 @@ fn block2(s: &mut StateS) -> i32
             }
     
             /* C16 */
-            s.q0[63] = RL!(md5_I!(s.q0[62], s.q0[61], s.q0[60]) + s.q0[59]
-                + s.x0[18] + 0x2ad7d2bb, 15) + s.q0[62];
-            s.q1[63] = RL!(md5_I!(s.q1[62], s.q1[61], s.q1[60]) + s.q1[59]
-                + s.x1[18] + 0x2ad7d2bb, 15) + s.q1[62];
+            s.q0[63] = RL!(md5_I!(s.q0[62], s.q0[61], s.q0[60]) + s.q0[59] + s.x0[18] + 0x2ad7d2bb, 15) + s.q0[62];
+            s.q1[63] = RL!(md5_I!(s.q1[62], s.q1[61], s.q1[60]) + s.q1[59] + s.x1[18] + 0x2ad7d2bb, 15) + s.q1[62];
             if (s.c0 + s.q0[63]) != (s.c1 + s.q1[63])
             {
                 continue 'loop_22;
             }
     
             /* B16 */
-            s.q0[64] = RL!(md5_I!(s.q0[63], s.q0[62], s.q0[61]) + s.q0[60]
-                + s.x0[25] + 0xeb86d391, 21) + s.q0[63];
-            s.q1[64] = RL!(md5_I!(s.q1[63], s.q1[62], s.q1[61]) + s.q1[60]
-                + s.x1[25] + 0xeb86d391, 21) + s.q1[63];
+            s.q0[64] = RL!(md5_I!(s.q0[63], s.q0[62], s.q0[61]) + s.q0[60] + s.x0[25] + 0xeb86d391, 21) + s.q0[63];
+            s.q1[64] = RL!(md5_I!(s.q1[63], s.q1[62], s.q1[61]) + s.q1[60] + s.x1[25] + 0xeb86d391, 21) + s.q1[63];
             if (s.b0 + s.q0[64]) != (s.b1 + s.q1[64])
             {
                 continue 'loop_22;
@@ -2130,9 +2059,9 @@ fn block2(s: &mut StateS) -> i32
 }
 
 /* return 0 on success, 1 if interrupt requested */
-fn md5coll_with_iv(iv: [u32; 4], m0: [u32; 32], m1: [u32; 32]) -> i32
+fn md5coll_with_iv(iv: [u32; 4], m0: [u32; 32], m1: [u32; 32])  -> i32
 {
-    let mut r: i32;
+    let mut ret: i32;
     let mut ct1: i32 = 0;
     let mut s: StateS = StateS{ 
         a0: 0,
@@ -2153,23 +2082,11 @@ fn md5coll_with_iv(iv: [u32; 4], m0: [u32; 32], m1: [u32; 32]) -> i32
 
     loop
     {
-        r = block1(iv, ct1, &mut s);
-        if r == 1
+        block1(iv, ct1, &mut s);
+        ret = block2(&mut s);
+        if ret == -1
         {
-            return 1;
-        }
-
-        r = block2(&mut s);
-        if r==1
-        {
-            return 1;
-        }
-        else if r == -1
-        {
-            unsafe
-            {
-                ct1 = s.ct1;
-            }
+            ct1 = s.ct1;
             continue;
         }
         else
@@ -2177,8 +2094,6 @@ fn md5coll_with_iv(iv: [u32; 4], m0: [u32; 32], m1: [u32; 32]) -> i32
             break;
         }
     }
-    //memcpy(m0, s.x0, 128);
-    //memcpy(m1, s.x1, 128);
     println!("unsigned int m0[32] = {{");
     for i in 0..32
     {
@@ -2199,6 +2114,8 @@ fn md5coll_with_iv(iv: [u32; 4], m0: [u32; 32], m1: [u32; 32]) -> i32
         }
     }
     println!("}};\n");
+    //let mut file = File::create("file1.bin")?;
+    //file.write_all(&s.x1.as_ref())?;
     return 0;
 }
 
@@ -2212,18 +2129,24 @@ fn main() -> std::io::Result<()>
     //let file = File::open(filename)?;
     let mut a: u32 = 5;
     let mut iv : [u32; 4] = [0; 4];
-    //find_iv(filename, &mut iv);
-    let items: Vec<_> = iter::repeat(0).take(1).collect();
+    extern crate num_cpus;
+    let num = num_cpus::get();
+    let items: Vec<_> = iter::repeat(0).take(num - 1).collect();
 
     let threads: Vec<_> = items
         .into_iter()
         .map(|_| {
             thread::spawn(move || {
-                println!("Started!");
+                println!("Thread {:?} started!", thread::current().id());
+                let start = SystemTime::now();
                 let m0: [u32; 32] = [0; 32];
                 let m1: [u32; 32] = [0; 32];
                 md5coll_with_iv(IV_DEFAULT, m0, m1);
-                println!("Finished!");
+                println!("Thread {:?} finished!", thread::current().id());
+                let end = SystemTime::now();
+                let elapsed = end.duration_since(start);
+                println!("\n\tExecution time: {} minutes\n", elapsed.unwrap_or_default().as_secs()/60);
+                process::exit(0);
             })
         })
         .collect();
