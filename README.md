@@ -1,6 +1,6 @@
 MD5 Collision Attack by Wang et al. implementation in Rust
 
-Based on Patrick Stach's 2005 implementation of the attach in C.
+Based on Patrick Stach's 2005 implementation of the attack in C.
 
 Build:
 cargo build --release
