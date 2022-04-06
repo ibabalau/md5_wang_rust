@@ -1,15 +1,17 @@
-MD5 Collision Attack by Wang et al. implementation in Rust
+# MD5 Collision Attack by Wang et al.: Rust implementation
 
 Based on Patrick Stach's 2005 implementation of the attack in C.
 
-Build:
-cargo build --release
+The program will start N_CORES - 1 parallel threads which will individually search for a collision.
 
-Running with default IV:
-cargo run --release
+## Build:
+`cargo build --release`
 
-Run with custom IV (warning: iv values need to be in hex format):
-cargo run --release 0x874587a2 0xf09dfbdf 0x17732fb1 0x9299e527
+## Running
+Run with default IV: `cargo run --release`
 
-Output:
+Run with custom IV (IV values need to be in hex format): `cargo run --release 0x874587a2 0xf09dfbdf 0x17732fb1 0x9299e527`
+
+## Output:
+
 m0.bin and m1.bin, which both have the same md5 hash
