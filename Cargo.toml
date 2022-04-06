@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 rand="0.8"
 num_cpus = "0.2"
+hex="0.4.3"
 
 [profile.dev]
 overflow-checks = false

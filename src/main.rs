@@ -1,15 +1,10 @@
 #![allow(arithmetic_overflow)]
 
 use std::env;
-use std::fs;
 use std::fs::File;
-use std::io::BufReader;
-use std::io::prelude::*;
-use std::result::Result;
-use std::io::prelude::*;
 use std::time::SystemTime;
 use rand::Rng;
-use std::io::{self, Write};
+use std::io::Write;
 use std::{process, thread, iter};
 
 macro_rules! md5_F
@@ -66,12 +61,9 @@ struct StateS {
     ct2: u32,
 } 
 
-static IV_DEFAULT: [u32; 4] =  [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476];
-
-
 fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
 {
-    println!("BLOCK 1 START");
+    println!("{:?}: BLOCK 1 START", thread::current().id());
     let mut rng = rand::thread_rng();
     let mut cnt:i32;
     let mut i:i32;
@@ -86,7 +78,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
 
             /* b1 */
             s.q0[4] = (rng.gen::<u32>() | 0x80080800) & !(0x00800040 | 0x0077f780);
-            s.q0[4] |= (s.q0[3] & 0x0077f780);
+            s.q0[4] |= s.q0[3] & 0x0077f780;
             s.q1[4] = s.q0[4];
 
             /* A2 */
@@ -95,7 +87,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
 
             /* D2 */
             s.q0[6] = (rng.gen::<u32>() | 0x027fbc41) & !(0x888043a4 | 0x7500001a);
-            s.q0[6] |= (s.q0[5] & 0x7500001a);
+            s.q0[6] |= s.q0[5] & 0x7500001a;
             s.q1[6] = s.q0[6] - 0x7f800040;
 
             /* C2 */
@@ -106,7 +98,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 - s.q0[3] - 0xa8304613;
             s.x1[6] = RR!(s.q1[7] - s.q1[6], 17) - md5_F!(s.q1[6], s.q1[5], s.q1[4])
                 - s.q1[3] - 0xa8304613;
-            if(s.x0[6] != s.x1[6])
+            if s.x0[6] != s.x1[6] 
             {
                 continue 'loop_1;
             }
@@ -119,21 +111,21 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 - s.q0[4] - 0xfd469501;
             s.x1[7] = RR!(s.q1[8] - s.q1[7], 22) - md5_F!(s.q1[7], s.q1[6], s.q1[5])
                 - s.q1[4] - 0xfd469501;
-            if(s.x0[7] != s.x1[7])
+            if s.x0[7] != s.x1[7]
             {
                 continue 'loop_1;
             }
 
             /* A3 */
             s.q0[9] = (rng.gen::<u32>() | 0xfb102f3d) & !(0x040f80c2 | 0x00001000);
-            s.q0[9] |= (s.q0[8] & 0x00001000);
+            s.q0[9] |= s.q0[8] & 0x00001000;
             s.q1[9] = s.q0[9] - 0x8000003f;
 
             s.x0[8] = RR!(s.q0[9] - s.q0[8],  7) - md5_F!(s.q0[8], s.q0[7], s.q0[6])
                 - s.q0[5] - 0x698098d8;
             s.x1[8] = RR!(s.q1[9] - s.q1[8],  7) - md5_F!(s.q1[8], s.q1[7], s.q1[6])
                 - s.q1[5] - 0x698098d8;
-            if(s.x0[8] != s.x1[8])
+            if s.x0[8] != s.x1[8]
             {
                 continue 'loop_1;
             }
@@ -146,35 +138,35 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 - s.q0[6] - 0x8b44f7af;
             s.x1[9] = RR!(s.q1[10] - s.q1[9], 12) - md5_F!(s.q1[9], s.q1[8], s.q1[7])
                 - s.q1[6] - 0x8b44f7af;
-            if(s.x0[9] != s.x1[9])
+            if s.x0[9] != s.x1[9]
             {
                 continue 'loop_1;
             }
 
             /* C3 */
             s.q0[11] = (rng.gen::<u32>() | 0x000180c2) & !(0xc00e3101 | 0x00004000);
-            s.q0[11] |= (s.q0[10] & 0x00004000);
+            s.q0[11] |= s.q0[10] & 0x00004000;
             s.q1[11] = s.q0[11] - 0x40000000;
 
             s.x0[10] = RR!(s.q0[11] - s.q0[10], 17) - md5_F!(s.q0[10], s.q0[9], s.q0[8])
                 - s.q0[7] - 0xffff5bb1;
             s.x1[10] = RR!(s.q1[11] - s.q1[10], 17) - md5_F!(s.q1[10], s.q1[9], s.q1[8])
                 - s.q1[7] - 0xffff5bb1;
-            if(s.x0[10] != s.x1[10])
+            if s.x0[10] != s.x1[10]
             {
                 continue 'loop_1;
             }
 
             /* B3 */
             s.q0[12] = (rng.gen::<u32>() | 0x00081100) & !(0xc007e080 | 0x03000000);
-            s.q0[12] |= (s.q0[11] & 0x03000000);
+            s.q0[12] |= s.q0[11] & 0x03000000;
             s.q1[12] = s.q0[12] - 0x80002080;
             
             s.x0[11] = RR!(s.q0[12] - s.q0[11], 22) - md5_F!(s.q0[11], s.q0[10], s.q0[9])
                 - s.q0[8] - 0x895cd7be;
             s.x1[11] = RR!(s.q1[12] - s.q1[11], 22) - md5_F!(s.q1[11], s.q1[10], s.q1[9])
                 - s.q1[8] - 0x895cd7be;
-            if((s.x0[11] ^ s.x1[11]) != 0x00008000)
+            if (s.x0[11] ^ s.x1[11]) != 0x00008000
             {
                 continue 'loop_1;
             }
@@ -187,7 +179,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 - s.q0[9] - 0x6b901122;
             s.x1[12] = RR!(s.q1[13] - s.q1[12],  7) - md5_F!(s.q1[12], s.q1[11], s.q1[10])
                 - s.q1[9] - 0x6b901122;
-            if(s.x0[12] != s.x1[12])
+            if s.x0[12] != s.x1[12]
             {
                 continue 'loop_1;
             }
@@ -200,7 +192,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 - s.q0[10] - 0xfd987193;
             s.x1[13] = RR!(s.q1[14] - s.q1[13], 12) - md5_F!(s.q1[13], s.q1[12], s.q1[11])
                 - s.q1[10] - 0xfd987193;
-            if(s.x0[13] != s.x1[13])
+            if s.x0[13] != s.x1[13]
             {
                 continue 'loop_1;
             }
@@ -213,7 +205,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 - s.q0[11] - 0xa679438e;
             s.x1[14] = RR!(s.q1[15] - s.q1[14], 17) - md5_F!(s.q1[14], s.q1[13], s.q1[12])
                 - s.q1[11] - 0xa679438e;
-            if((s.x0[14] ^ s.x1[14]) != 0x80000000)
+            if (s.x0[14] ^ s.x1[14]) != 0x80000000
             {
                 continue 'loop_1;
             }
@@ -227,7 +219,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 - s.q0[12] - 0x49b40821;
             s.x1[15] = RR!(s.q1[16] - s.q1[15], 22) - md5_F!(s.q1[15], s.q1[14], s.q1[13])
                 - s.q1[12] - 0x49b40821;
-            if(s.x0[15] != s.x1[15])
+            if s.x0[15] != s.x1[15]
             {
                 continue 'loop_1;
             }
@@ -243,14 +235,14 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             }
             /* A5 */
             s.q0[17] = rng.gen::<u32>() & !(0x80020000 | 0x00008008);
-            s.q0[17] |= (s.q0[16] & 0x00008008);
+            s.q0[17] |= s.q0[16] & 0x00008008;
             s.q1[17] = s.q0[17] - 0x80000000;
 
             s.x0[1] = RR!(s.q0[17] - s.q0[16],  5) - md5_G!(s.q0[16], s.q0[15], s.q0[14])
                 - s.q0[13] - 0xf61e2562;
             s.x1[1] = RR!(s.q1[17] - s.q1[16],  5) - md5_G!(s.q1[16], s.q1[15], s.q1[14])
                 - s.q1[13] - 0xf61e2562;
-            if(s.x0[1] != s.x1[1])
+            if s.x0[1] != s.x1[1]
             {
                 continue 'loop_11;
             }
@@ -258,27 +250,26 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* D5 */
             s.q0[18] = RL!(md5_G!(s.q0[17], s.q0[16], s.q0[15]) + s.q0[14]
                 + s.x0[6] + 0xc040b340,  9) + s.q0[17];
-            if((s.q0[18] & 0xa0020000)
-                != (0x00020000 | (s.q0[17] & 0x20000000)))
+            if (s.q0[18] & 0xa0020000) != (0x00020000 | (s.q0[17] & 0x20000000))
             {
                 continue 'loop_11;
             }
             s.q1[18] = RL!(md5_G!(s.q1[17], s.q1[16], s.q1[15]) + s.q1[14]
                 + s.x1[6] + 0xc040b340,  9) + s.q1[17];
-            if((s.q0[18] ^ s.q1[18]) != 0x80000000)
+            if (s.q0[18] ^ s.q1[18]) != 0x80000000
             {
                 continue 'loop_11;
             }
             /* C5 */
             s.q0[19] = RL!(md5_G!(s.q0[18], s.q0[17], s.q0[16]) + s.q0[15]
                 + s.x0[11] + 0x265e5a51, 14) + s.q0[18];
-            if(s.q0[19] & 0x80020000 != 0)
+            if s.q0[19] & 0x80020000 != 0
             {
                 continue 'loop_11;
             }
             s.q1[19] = RL!(md5_G!(s.q1[18], s.q1[17], s.q1[16]) + s.q1[15]
                 + s.x1[11] + 0x265e5a51, 14) + s.q1[18];
-            if(s.q0[19] - s.q1[19] != 0x7ffe0000)
+            if s.q0[19] - s.q1[19] != 0x7ffe0000
             {
                 continue 'loop_11;
             }
@@ -291,7 +282,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 - s.q0[16] - 0xe9b6c7aa;
             s.x1[0] = RR!(s.q1[20] - s.q1[19], 20) - md5_G!(s.q1[19], s.q1[18], s.q1[17])
                 - s.q1[16] - 0xe9b6c7aa;
-            if(s.x0[0] != s.x1[0])
+            if s.x0[0] != s.x1[0]
             {
                 continue 'loop_11;
             }
@@ -316,7 +307,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 - s.q0[1] - 0xf57c0faf;
             s.x1[4] = RR!(s.q1[5] - s.q1[4],  7) - md5_F!(s.q1[4], s.q1[3], s.q1[2])
                 - s.q1[1] - 0xf57c0faf;
-            if((s.x0[4] ^ s.x1[4]) != 0x80000000)
+            if (s.x0[4] ^ s.x1[4]) != 0x80000000
             {
                 continue 'loop_11;
             }
@@ -325,7 +316,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 - s.q0[2] - 0x4787c62a;
             s.x1[5] = RR!(s.q1[6] - s.q1[5], 12) - md5_F!(s.q1[5], s.q1[4], s.q1[3])
                 - s.q1[2] - 0x4787c62a;
-            if(s.x0[5] != s.x1[5])
+            if s.x0[5] != s.x1[5]
             {
                 continue 'loop_11;
             }
@@ -333,13 +324,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* A6 */
             s.q0[21] = RL!(md5_G!(s.q0[20], s.q0[19], s.q0[18]) + s.q0[17]
                 + s.x0[5] + 0xd62f105d,  5) + s.q0[20];
-            if((s.q0[21] & 0x80020000) != (s.q0[20] & 0x00020000))
+            if (s.q0[21] & 0x80020000) != (s.q0[20] & 0x00020000)
             {
                 continue 'loop_11;
             }
             s.q1[21] = RL!(md5_G!(s.q1[20], s.q1[19], s.q1[18]) + s.q1[17]
                 + s.x1[5] + 0xd62f105d,  5) + s.q1[20];
-            if((s.q0[21] ^ s.q1[21]) != 0x80000000)
+            if (s.q0[21] ^ s.q1[21]) != 0x80000000
             {
                 continue 'loop_11;
             }
@@ -347,13 +338,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* D6 */
             s.q0[22] = RL!(md5_G!(s.q0[21], s.q0[20], s.q0[19]) + s.q0[18]
                 + s.x0[10] + 0x02441453,  9) + s.q0[21];
-            if(s.q0[22] & 0x80000000 != 0)
+            if s.q0[22] & 0x80000000 != 0
             {
                 continue 'loop_11;
             }
             s.q1[22] = RL!(md5_G!(s.q1[21], s.q1[20], s.q1[19]) + s.q1[18]
                 + s.x1[10] + 0x02441453,  9) + s.q1[21];
-            if((s.q0[22] ^ s.q1[22]) != 0x80000000)
+            if (s.q0[22] ^ s.q1[22]) != 0x80000000
             {
                 continue 'loop_11;
             }
@@ -361,13 +352,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* C6 */
             s.q0[23] = RL!(md5_G!(s.q0[22], s.q0[21], s.q0[20]) + s.q0[19]
                 + s.x0[15] + 0xd8a1e681, 14) + s.q0[22];
-            if(s.q0[23] & 0x80000000 != 0)
+            if s.q0[23] & 0x80000000 != 0
             {
                 continue 'loop_11;
             }
             s.q1[23] = RL!(md5_G!(s.q1[22], s.q1[21], s.q1[20]) + s.q1[19]
                 + s.x1[15] + 0xd8a1e681, 14) + s.q1[22];
-            if(s.q0[23] != s.q1[23])
+            if s.q0[23] != s.q1[23]
             {
                 continue 'loop_11;
             }
@@ -377,7 +368,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[4] + 0xe7d3fbc8, 20) + s.q0[23];
             s.q1[24] = RL!(md5_G!(s.q1[23], s.q1[22], s.q1[21]) + s.q1[20]
                 + s.x1[4] + 0xe7d3fbc8, 20) + s.q1[23];
-            if(s.q0[24] != s.q1[24])
+            if s.q0[24] != s.q1[24]
             {
                 continue 'loop_11;
             }
@@ -387,7 +378,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[9] + 0x21e1cde6,  5) + s.q0[24];
             s.q1[25] = RL!(md5_G!(s.q1[24], s.q1[23], s.q1[22]) + s.q1[21]
                 + s.x1[9] + 0x21e1cde6,  5) + s.q1[24];
-            if(s.q0[25] != s.q1[25])
+            if s.q0[25] != s.q1[25]
             {
                 continue 'loop_11;
             }
@@ -397,7 +388,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                     + s.x0[14] + 0xc33707d6,  9) + s.q0[25];
             s.q1[26] = RL!(md5_G!(s.q1[25], s.q1[24], s.q1[23]) + s.q1[22]
                     + s.x1[14] + 0xc33707d6,  9) + s.q1[25];
-            if(s.q0[26] != s.q1[26])
+            if s.q0[26] != s.q1[26]
             {
                 continue 'loop_11;
             }
@@ -407,7 +398,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[3] + 0xf4d50d87, 14) + s.q0[26];
             s.q1[27] = RL!(md5_G!(s.q1[26], s.q1[25], s.q1[24]) + s.q1[23]
                 + s.x1[3] + 0xf4d50d87, 14) + s.q1[26];
-            if(s.q0[27] != s.q1[27])
+            if s.q0[27] != s.q1[27]
             {
                 continue 'loop_11;
             }
@@ -465,7 +456,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 - s.q0[2] - 0x4787c62a;
             s.x1[5] = RR!(s.q1[6] - s.q1[5], 12) - md5_F!(s.q1[5], s.q1[4], s.q1[3])
                 - s.q1[2] - 0x4787c62a;
-            if(s.x0[5] != s.x1[5])
+            if s.x0[5] != s.x1[5]
             {
                 continue 'loop_12;
             }
@@ -473,13 +464,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* A6 */
             s.q0[21] = RL!(md5_G!(s.q0[20], s.q0[19], s.q0[18]) + s.q0[17]
                 + s.x0[5] + 0xd62f105d,  5) + s.q0[20];
-            if((s.q0[21] & 0x80020000) != (s.q0[20] & 0x00020000))
+            if (s.q0[21] & 0x80020000) != (s.q0[20] & 0x00020000)
             {
                 continue 'loop_12;
             }
             s.q1[21] = RL!(md5_G!(s.q1[20], s.q1[19], s.q1[18]) + s.q1[17]
                 + s.x1[5] + 0xd62f105d,  5) + s.q1[20];
-            if((s.q0[21] ^ s.q1[21]) != 0x80000000)
+            if (s.q0[21] ^ s.q1[21]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -487,13 +478,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* D6 */
             s.q0[22] = RL!(md5_G!(s.q0[21], s.q0[20], s.q0[19]) + s.q0[18]
                 + s.x0[10] + 0x02441453,  9) + s.q0[21];
-            if(s.q0[22] & 0x80000000 != 0)
+            if s.q0[22] & 0x80000000 != 0
             {
                 continue 'loop_12;
             }
             s.q1[22] = RL!(md5_G!(s.q1[21], s.q1[20], s.q1[19]) + s.q1[18]
                 + s.x1[10] + 0x02441453,  9) + s.q1[21];
-            if((s.q0[22] ^ s.q1[22]) != 0x80000000)
+            if (s.q0[22] ^ s.q1[22]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -501,13 +492,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* C6 */
             s.q0[23] = RL!(md5_G!(s.q0[22], s.q0[21], s.q0[20]) + s.q0[19]
                 + s.x0[15] + 0xd8a1e681, 14) + s.q0[22];
-            if(s.q0[23] & 0x80000000 != 0)
+            if s.q0[23] & 0x80000000 != 0
             {
                 continue 'loop_12;
             }
             s.q1[23] = RL!(md5_G!(s.q1[22], s.q1[21], s.q1[20]) + s.q1[19]
                 + s.x1[15] + 0xd8a1e681, 14) + s.q1[22];
-            if(s.q0[23] != s.q1[23])
+            if s.q0[23] != s.q1[23]
             {
                 continue 'loop_12;
             }
@@ -517,7 +508,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[4] + 0xe7d3fbc8, 20) + s.q0[23];
             s.q1[24] = RL!(md5_G!(s.q1[23], s.q1[22], s.q1[21]) + s.q1[20]
                 + s.x1[4] + 0xe7d3fbc8, 20) + s.q1[23];
-            if(s.q0[24] != s.q1[24])
+            if s.q0[24] != s.q1[24]
             {
                 continue 'loop_12;
             }
@@ -527,7 +518,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[9] + 0x21e1cde6,  5) + s.q0[24];
             s.q1[25] = RL!(md5_G!(s.q1[24], s.q1[23], s.q1[22]) + s.q1[21]
                 + s.x1[9] + 0x21e1cde6,  5) + s.q1[24];
-            if(s.q0[25] != s.q1[25])
+            if s.q0[25] != s.q1[25]
             {
                 continue 'loop_12;
             }
@@ -537,7 +528,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[14] + 0xc33707d6,  9) + s.q0[25];
             s.q1[26] = RL!(md5_G!(s.q1[25], s.q1[24], s.q1[23]) + s.q1[22]
                 + s.x1[14] + 0xc33707d6,  9) + s.q1[25];
-            if(s.q0[26] != s.q1[26])
+            if s.q0[26] != s.q1[26]
             {
                 continue 'loop_12;
             }
@@ -547,7 +538,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[3] + 0xf4d50d87, 14) + s.q0[26];
             s.q1[27] = RL!(md5_G!(s.q1[26], s.q1[25], s.q1[24]) + s.q1[23]
                 + s.x1[3] + 0xf4d50d87, 14) + s.q1[26];
-            if(s.q0[27] != s.q1[27])
+            if s.q0[27] != s.q1[27]
             {
                 continue 'loop_12;
             }
@@ -557,7 +548,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[8] + 0x455a14ed, 20) + s.q0[27];
             s.q1[28] = RL!(md5_G!(s.q1[27], s.q1[26], s.q1[25]) + s.q1[24]
                 + s.x1[8] + 0x455a14ed, 20) + s.q1[27];
-            if(s.q0[28] != s.q1[28])
+            if s.q0[28] != s.q1[28]
             {
                 continue 'loop_12;
             }
@@ -567,7 +558,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[13] + 0xa9e3e905,  5) + s.q0[28];
             s.q1[29] = RL!(md5_G!(s.q1[28], s.q1[27], s.q1[26]) + s.q1[25]
                 + s.x1[13] + 0xa9e3e905,  5) + s.q1[28];
-            if(s.q0[29] != s.q1[29])
+            if s.q0[29] != s.q1[29]
             {
                 continue 'loop_12;
             }
@@ -577,7 +568,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[2] + 0xfcefa3f8,  9) + s.q0[29];
             s.q1[30] = RL!(md5_G!(s.q1[29], s.q1[28], s.q1[27]) + s.q1[26]
                 + s.x1[2] + 0xfcefa3f8,  9) + s.q1[29];
-            if(s.q0[30] != s.q1[30])
+            if s.q0[30] != s.q1[30]
             {
                 continue 'loop_12;
             }
@@ -587,7 +578,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[7] + 0x676f02d9, 14) + s.q0[30];
             s.q1[31] = RL!(md5_G!(s.q1[30], s.q1[29], s.q1[28]) + s.q1[27]
                 + s.x1[7] + 0x676f02d9, 14) + s.q1[30];
-            if(s.q0[31] != s.q1[31])
+            if s.q0[31] != s.q1[31]
             {
                 continue 'loop_12;
             }
@@ -597,7 +588,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[12] + 0x8d2a4c8a, 20) + s.q0[31];
             s.q1[32] = RL!(md5_G!(s.q1[31], s.q1[30], s.q1[29]) + s.q1[28]
                 + s.x1[12] + 0x8d2a4c8a, 20) + s.q1[31];
-            if(s.q0[32] != s.q1[32])
+            if s.q0[32] != s.q1[32]
             {
                 continue 'loop_12;
             }
@@ -607,7 +598,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[5] + 0xfffa3942,  4) + s.q0[32];
             s.q1[33] = RL!(md5_H!(s.q1[32], s.q1[31], s.q1[30]) + s.q1[29]
                 + s.x1[5] + 0xfffa3942,  4) + s.q1[32];
-            if(s.q0[33] != s.q1[33])
+            if s.q0[33] != s.q1[33]
             {
                 continue 'loop_12;
             }
@@ -617,7 +608,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[8] + 0x8771f681, 11) + s.q0[33];
             s.q1[34] = RL!(md5_H!(s.q1[33], s.q1[32], s.q1[31]) + s.q1[30]
                 + s.x1[8] + 0x8771f681, 11) + s.q1[33];
-            if(s.q0[34] != s.q1[34])
+            if s.q0[34] != s.q1[34]
             {
                 continue 'loop_12;
             }
@@ -627,7 +618,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[11] + 0x6d9d6122, 16) + s.q0[34];
             s.q1[35] = RL!(md5_H!(s.q1[34], s.q1[33], s.q1[32]) + s.q1[31]
                 + s.x1[11] + 0x6d9d6122, 16) + s.q1[34];
-            if((s.q0[35] ^ s.q1[35]) != 0x80000000)
+            if (s.q0[35] ^ s.q1[35]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -637,7 +628,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[14] + 0xfde5380c, 23) + s.q0[35];
             s.q1[36] = RL!(md5_H!(s.q1[35], s.q1[34], s.q1[33]) + s.q1[32]
                 + s.x1[14] + 0xfde5380c, 23) + s.q1[35];
-            if((s.q0[36] ^ s.q1[36]) != 0x80000000)
+            if (s.q0[36] ^ s.q1[36]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -647,7 +638,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[1] + 0xa4beea44,  4) + s.q0[36];
             s.q1[37] = RL!(md5_H!(s.q1[36], s.q1[35], s.q1[34]) + s.q1[33]
                 + s.x1[1] + 0xa4beea44,  4) + s.q1[36];
-            if((s.q0[37] ^ s.q1[37]) != 0x80000000)
+            if (s.q0[37] ^ s.q1[37]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -657,7 +648,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[4] + 0x4bdecfa9, 11) + s.q0[37];
             s.q1[38] = RL!(md5_H!(s.q1[37], s.q1[36], s.q1[35]) + s.q1[34]
                 + s.x1[4] + 0x4bdecfa9, 11) + s.q1[37];
-            if((s.q0[38] ^ s.q1[38]) != 0x80000000)
+            if (s.q0[38] ^ s.q1[38]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -667,7 +658,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[7] + 0xf6bb4b60, 16) + s.q0[38];
             s.q1[39] = RL!(md5_H!(s.q1[38], s.q1[37], s.q1[36]) + s.q1[35]
                 + s.x1[7] + 0xf6bb4b60, 16) + s.q1[38];
-            if((s.q0[39] ^ s.q1[39]) != 0x80000000)
+            if (s.q0[39] ^ s.q1[39]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -677,7 +668,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[10] + 0xbebfbc70, 23) + s.q0[39];
             s.q1[40] = RL!(md5_H!(s.q1[39], s.q1[38], s.q1[37]) + s.q1[36]
                 + s.x1[10] + 0xbebfbc70, 23) + s.q1[39];
-            if((s.q0[40] ^ s.q1[40]) != 0x80000000)
+            if (s.q0[40] ^ s.q1[40]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -687,7 +678,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[13] + 0x289b7ec6,  4) + s.q0[40];
             s.q1[41] = RL!(md5_H!(s.q1[40], s.q1[39], s.q1[38]) + s.q1[37]
                 + s.x1[13] + 0x289b7ec6,  4) + s.q1[40];
-            if((s.q0[41] ^ s.q1[41]) != 0x80000000)
+            if (s.q0[41] ^ s.q1[41]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -697,7 +688,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[0] + 0xeaa127fa, 11) + s.q0[41];
             s.q1[42] = RL!(md5_H!(s.q1[41], s.q1[40], s.q1[39]) + s.q1[38]
                 + s.x1[0] + 0xeaa127fa, 11) + s.q1[41];
-            if((s.q0[42] ^ s.q1[42]) != 0x80000000)
+            if (s.q0[42] ^ s.q1[42]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -707,7 +698,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[3] + 0xd4ef3085, 16) + s.q0[42];
             s.q1[43] = RL!(md5_H!(s.q1[42], s.q1[41], s.q1[40]) + s.q1[39]
                 + s.x1[3] + 0xd4ef3085, 16) + s.q1[42];
-            if((s.q0[43] ^ s.q1[43]) != 0x80000000)
+            if (s.q0[43] ^ s.q1[43]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -717,7 +708,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[6] + 0x04881d05, 23) + s.q0[43];
             s.q1[44] = RL!(md5_H!(s.q1[43], s.q1[42], s.q1[41]) + s.q1[40]
                 + s.x1[6] + 0x04881d05, 23) + s.q1[43];
-            if((s.q0[44] ^ s.q1[44]) != 0x80000000)
+            if (s.q0[44] ^ s.q1[44]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -727,7 +718,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[9] + 0xd9d4d039,  4) + s.q0[44];
             s.q1[45] = RL!(md5_H!(s.q1[44], s.q1[43], s.q1[42]) + s.q1[41]
                 + s.x1[9] + 0xd9d4d039,  4) + s.q1[44];
-            if((s.q0[45] ^ s.q1[45]) != 0x80000000)
+            if (s.q0[45] ^ s.q1[45]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -737,7 +728,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[12] + 0xe6db99e5, 11) + s.q0[45];
             s.q1[46] = RL!(md5_H!(s.q1[45], s.q1[44], s.q1[43]) + s.q1[42]
                 + s.x1[12] + 0xe6db99e5, 11) + s.q1[45];
-            if((s.q0[46] ^ s.q1[46]) != 0x80000000)
+            if (s.q0[46] ^ s.q1[46]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -747,7 +738,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
                 + s.x0[15] + 0x1fa27cf8, 16) + s.q0[46];
             s.q1[47] = RL!(md5_H!(s.q1[46], s.q1[45], s.q1[44]) + s.q1[43]
                 + s.x1[15] + 0x1fa27cf8, 16) + s.q1[46];
-            if((s.q0[47] ^ s.q1[47]) != 0x80000000)
+            if (s.q0[47] ^ s.q1[47]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -755,13 +746,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* B12 */
             s.q0[48] = RL!(md5_H!(s.q0[47], s.q0[46], s.q0[45]) + s.q0[44]
                 + s.x0[2] + 0xc4ac5665, 23) + s.q0[47];
-            if((s.q0[48] ^ s.q0[46]) & 0x80000000  != 0)
+            if (s.q0[48] ^ s.q0[46]) & 0x80000000  != 0
             {
                 continue 'loop_12;
             }
             s.q1[48] = RL!(md5_H!(s.q1[47], s.q1[46], s.q1[45]) + s.q1[44]
                 + s.x1[2] + 0xc4ac5665, 23) + s.q1[47];
-            if((s.q0[48] ^ s.q1[48]) != 0x80000000)
+            if (s.q0[48] ^ s.q1[48]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -769,13 +760,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* A13 */
             s.q0[49] = RL!(md5_I!(s.q0[48], s.q0[47], s.q0[46]) + s.q0[45]
                 + s.x0[0] + 0xf4292244,  6) + s.q0[48];
-            if((s.q0[49] ^ s.q0[47]) & 0x80000000 != 0)
+            if (s.q0[49] ^ s.q0[47]) & 0x80000000 != 0
             {
                 continue 'loop_12;
             }
             s.q1[49] = RL!(md5_I!(s.q1[48], s.q1[47], s.q1[46]) + s.q1[45]
                 + s.x1[0] + 0xf4292244,  6) + s.q1[48];
-            if((s.q0[49] ^ s.q1[49]) != 0x80000000)
+            if (s.q0[49] ^ s.q1[49]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -783,13 +774,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* D13 */
             s.q0[50] = RL!(md5_I!(s.q0[49], s.q0[48], s.q0[47]) + s.q0[46]
                 + s.x0[7] + 0x432aff97, 10) + s.q0[49];
-            if(((s.q0[50] ^ s.q0[48]) & 0x80000000) == 0)
+            if ((s.q0[50] ^ s.q0[48]) & 0x80000000) == 0
             {
                 continue 'loop_12;
             }
             s.q1[50] = RL!(md5_I!(s.q1[49], s.q1[48], s.q1[47]) + s.q1[46]
                 + s.x1[7] + 0x432aff97, 10) + s.q1[49];
-            if((s.q0[50] ^ s.q1[50]) != 0x80000000)
+            if (s.q0[50] ^ s.q1[50]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -797,13 +788,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* C13 */
             s.q0[51] = RL!(md5_I!(s.q0[50], s.q0[49], s.q0[48]) + s.q0[47]
                 + s.x0[14] + 0xab9423a7, 15) + s.q0[50];
-            if((s.q0[51] ^ s.q0[49]) & 0x80000000 != 0)
+            if (s.q0[51] ^ s.q0[49]) & 0x80000000 != 0
             {
                 continue 'loop_12;
             }
             s.q1[51] = RL!(md5_I!(s.q1[50], s.q1[49], s.q1[48]) + s.q1[47]
                 + s.x1[14] + 0xab9423a7, 15) + s.q1[50];
-            if((s.q0[51] ^ s.q1[51]) != 0x80000000)
+            if (s.q0[51] ^ s.q1[51]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -811,13 +802,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* B13 */
             s.q0[52] = RL!(md5_I!(s.q0[51], s.q0[50], s.q0[49]) + s.q0[48]
                 + s.x0[5] + 0xfc93a039, 21) + s.q0[51];
-            if((s.q0[52] ^ s.q0[50]) & 0x80000000 != 0)
+            if (s.q0[52] ^ s.q0[50]) & 0x80000000 != 0
             {
                 continue 'loop_12;
             }
             s.q1[52] = RL!(md5_I!(s.q1[51], s.q1[50], s.q1[49]) + s.q1[48]
                 + s.x1[5] + 0xfc93a039, 21) + s.q1[51];
-            if((s.q0[52] ^ s.q1[52]) != 0x80000000)
+            if (s.q0[52] ^ s.q1[52]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -825,13 +816,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* A14 */
             s.q0[53] = RL!(md5_I!(s.q0[52], s.q0[51], s.q0[50]) + s.q0[49]
                 + s.x0[12] + 0x655b59c3,  6) + s.q0[52];
-            if((s.q0[53] ^ s.q0[51]) & 0x80000000 != 0)
+            if (s.q0[53] ^ s.q0[51]) & 0x80000000 != 0
             {
                 continue 'loop_12;
             }
             s.q1[53] = RL!(md5_I!(s.q1[52], s.q1[51], s.q1[50]) + s.q1[49]
                 + s.x1[12] + 0x655b59c3,  6) + s.q1[52];
-            if((s.q0[53] ^ s.q1[53]) != 0x80000000)
+            if (s.q0[53] ^ s.q1[53]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -839,13 +830,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* D14 */
             s.q0[54] = RL!(md5_I!(s.q0[53], s.q0[52], s.q0[51]) + s.q0[50]
                 + s.x0[3] + 0x8f0ccc92, 10) + s.q0[53];
-            if((s.q0[54] ^ s.q0[52]) & 0x80000000 != 0)
+            if (s.q0[54] ^ s.q0[52]) & 0x80000000 != 0
             {
                 continue 'loop_12;
             }
             s.q1[54] = RL!(md5_I!(s.q1[53], s.q1[52], s.q1[51]) + s.q1[50]
                 + s.x1[3] + 0x8f0ccc92, 10) + s.q1[53];
-            if((s.q0[54] ^ s.q1[54]) != 0x80000000)
+            if (s.q0[54] ^ s.q1[54]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -853,13 +844,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* C14 */
             s.q0[55] = RL!(md5_I!(s.q0[54], s.q0[53], s.q0[52]) + s.q0[51]
                 + s.x0[10] + 0xffeff47d, 15) + s.q0[54];
-            if((s.q0[55] ^ s.q0[53]) & 0x80000000 != 0)
+            if (s.q0[55] ^ s.q0[53]) & 0x80000000 != 0
             {
                 continue 'loop_12;
             }
             s.q1[55] = RL!(md5_I!(s.q1[54], s.q1[53], s.q1[52]) + s.q1[51]
                 + s.x1[10] + 0xffeff47d, 15) + s.q1[54];
-            if((s.q0[55] ^ s.q1[55]) != 0x80000000)
+            if (s.q0[55] ^ s.q1[55]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -867,7 +858,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* B14 */
             s.q0[56] = RL!(md5_I!(s.q0[55], s.q0[54], s.q0[53]) + s.q0[52]
                 + s.x0[1] + 0x85845dd1, 21) + s.q0[55];
-            if((s.q0[56] ^ s.q0[54]) & 0x80000000 != 0)
+            if (s.q0[56] ^ s.q0[54]) & 0x80000000 != 0
             {
                 continue 'loop_12;
             }
@@ -881,13 +872,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* A15 */
             s.q0[57] = RL!(md5_I!(s.q0[56], s.q0[55], s.q0[54]) + s.q0[53]
                 + s.x0[8] + 0x6fa87e4f,  6) + s.q0[56];
-            if((s.q0[57] ^ s.q0[55]) & 0x80000000 != 0)
+            if (s.q0[57] ^ s.q0[55]) & 0x80000000 != 0
             {
                 continue 'loop_12;
             }
             s.q1[57] = RL!(md5_I!(s.q1[56], s.q1[55], s.q1[54]) + s.q1[53]
                 + s.x1[8] + 0x6fa87e4f,  6) + s.q1[56];
-            if((s.q0[57] ^ s.q1[57]) != 0x80000000)
+            if (s.q0[57] ^ s.q1[57]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -895,13 +886,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* D15 */
             s.q0[58] = RL!(md5_I!(s.q0[57], s.q0[56], s.q0[55]) + s.q0[54]
                 + s.x0[15] + 0xfe2ce6e0, 10) + s.q0[57];
-            if((s.q0[58] ^ s.q0[56]) & 0x80000000 != 0)
+            if (s.q0[58] ^ s.q0[56]) & 0x80000000 != 0
             {
                 continue 'loop_12;
             }
             s.q1[58] = RL!(md5_I!(s.q1[57], s.q1[56], s.q1[55]) + s.q1[54]
                 + s.x1[15] + 0xfe2ce6e0, 10) + s.q1[57];
-            if((s.q0[58] ^ s.q1[58]) != 0x80000000)
+            if (s.q0[58] ^ s.q1[58]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -909,13 +900,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* C15 */
             s.q0[59] = RL!(md5_I!(s.q0[58], s.q0[57], s.q0[56]) + s.q0[55]
                 + s.x0[6] + 0xa3014314, 15) + s.q0[58];
-            if((s.q0[59] ^ s.q0[57]) & 0x80000000 != 0)
+            if (s.q0[59] ^ s.q0[57]) & 0x80000000 != 0
             {
                 continue 'loop_12;
             }
             s.q1[59] = RL!(md5_I!(s.q1[58], s.q1[57], s.q1[56]) + s.q1[55]
                 + s.x1[6] + 0xa3014314, 15) + s.q1[58];
-            if((s.q0[59] ^ s.q1[59]) != 0x80000000)
+            if (s.q0[59] ^ s.q1[59]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -923,13 +914,13 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             /* B15 */
             s.q0[60] = RL!(md5_I!(s.q0[59], s.q0[58], s.q0[57]) + s.q0[56]
                 + s.x0[13] + 0x4e0811a1, 21) + s.q0[59];
-            if(s.q0[60] & 0x02000000 != 0)
+            if s.q0[60] & 0x02000000 != 0
             {
                 continue 'loop_12;
             }
             s.q1[60] = RL!(md5_I!(s.q1[59], s.q1[58], s.q1[57]) + s.q1[56]
                 + s.x1[13] + 0x4e0811a1, 21) + s.q1[59];
-            if((s.q0[60] ^ s.q1[60]) != 0x80000000)
+            if (s.q0[60] ^ s.q1[60]) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -941,7 +932,7 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             s.q1[61] = RL!(md5_I!(s.q1[60], s.q1[59], s.q1[58]) + s.q1[57]
                 + s.x1[4] + 0xf7537e82,  6) + s.q1[60];
             s.a1 = iv[0] + s.q1[61];
-            if((s.a0 ^ s.a1) != 0x80000000)
+            if (s.a0 ^ s.a1) != 0x80000000
             {
                 continue 'loop_12;
             }
@@ -950,14 +941,14 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             s.q0[62] = RL!(md5_I!(s.q0[61], s.q0[60], s.q0[59]) + s.q0[58]
                 + s.x0[11] + 0xbd3af235, 10) + s.q0[61];
             s.d0 = iv[3] + s.q0[62];
-            if(s.d0 & 0x02000000 != 0)
+            if s.d0 & 0x02000000 != 0
             {
                 continue 'loop_12;
             }
             s.q1[62] = RL!(md5_I!(s.q1[61], s.q1[60], s.q1[59]) + s.q1[58]
                 + s.x1[11] + 0xbd3af235, 10) + s.q1[61];
             s.d1 = iv[3] + s.q1[62];
-            if((s.d0 - s.d1) != 0x7e000000)
+            if (s.d0 - s.d1) != 0x7e000000
             {
                 continue 'loop_12;
             }
@@ -966,14 +957,14 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             s.q0[63] = RL!(md5_I!(s.q0[62], s.q0[61], s.q0[60]) + s.q0[59]
                 + s.x0[2] + 0x2ad7d2bb, 15) + s.q0[62];
             s.c0 = iv[2] + s.q0[63];
-            if((s.c0 & 0x86000000) != ((s.d0 & 0x80000000) | 0x02000000))
+            if (s.c0 & 0x86000000) != ((s.d0 & 0x80000000) | 0x02000000)
             {
                 continue 'loop_12;
             }
             s.q1[63] = RL!(md5_I!(s.q1[62], s.q1[61], s.q1[60]) + s.q1[59]
                 + s.x1[2] + 0x2ad7d2bb, 15) + s.q1[62];
             s.c1 = iv[2] + s.q1[63];
-            if((s.c0 - s.c1) != 0x7e000000)
+            if (s.c0 - s.c1) != 0x7e000000
             {
                 continue 'loop_12;
             }
@@ -982,14 +973,14 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
             s.q0[64] = RL!(md5_I!(s.q0[63], s.q0[62], s.q0[61]) + s.q0[60]
                 + s.x0[9] + 0xeb86d391, 21) + s.q0[63];
             s.b0 = iv[1] + s.q0[64];
-            if((s.b0 & 0x86000020) != (s.c0 & 0x80000000))
+            if (s.b0 & 0x86000020) != (s.c0 & 0x80000000)
             {
                 continue 'loop_12;
             }
             s.q1[64] = RL!(md5_I!(s.q1[63], s.q1[62], s.q1[61]) + s.q1[60]
                 + s.x1[9] + 0xeb86d391, 21) + s.q1[63];
             s.b1 = iv[1] + s.q1[64];
-            if((s.b0 - s.b1) != 0x7e000000)
+            if (s.b0 - s.b1) != 0x7e000000
             {
                 continue 'loop_12;
             }
@@ -998,12 +989,12 @@ fn block1(iv: [u32; 4], mut ct1: i32, s: &mut StateS) -> i32
         }
         s.ct1 = ct1;
         s.ct2 = (cnt >> 20) as u32;
-        println!("BLOCK 1 FINISH");
+        println!("{:?}: BLOCK 1 FINISHED", thread::current().id());
         return 0; 
     }
 }
 
-const mask22:[u32; 30] = [
+const MASK22:[u32; 30] = [
     0x00000001, 0x00000002, 0x00000004, 0x00000008,
     0x00000010, 0x00000020, 0x00000040, 0x00000080,
     0x00000100, 0x00000200, 0x00000400, 0x00000800, 
@@ -1016,7 +1007,7 @@ const mask22:[u32; 30] = [
 
 fn block2(s: &mut StateS) -> i32
 {
-    println!("BLOCK 2 START");
+    println!("{:?}: BLOCK 2 START", thread::current().id());
     let mut rng = rand::thread_rng();
     let mut ct3: i32 = 0;
     let mut it: i32 = 0;
@@ -1073,9 +1064,9 @@ fn block2(s: &mut StateS) -> i32
                 {
                     /* Try to predict a state in which block 2 is impossible to achieve and return to block 1 */
                     it += 1;
-                    if it >= 10000
+                    if it == 10000
                     {
-                        println!("BLOCK 2 FAIL, RESTARTING BLOCK 1");
+                        println!("{:?}: BLOCK 2 FAIL, RESTARTING BLOCK 1", thread::current().id());
                         return -1;
                     }
                 }
@@ -1488,7 +1479,7 @@ fn block2(s: &mut StateS) -> i32
             }
     
             /* B4 */
-            s.q0[16] ^= mask22[rng.gen::<usize>() % 30];
+            s.q0[16] ^= MASK22[rng.gen::<usize>() % 30];
             s.q1[16] = s.q0[16] - 0xa0000000;
 
             s.x0[31] = RR!(s.q0[16] - s.q0[15], 22) - md5_F!(s.q0[15], s.q0[14], s.q0[13])
@@ -2058,8 +2049,7 @@ fn block2(s: &mut StateS) -> i32
     }
 }
 
-/* return 0 on success, 1 if interrupt requested */
-fn md5coll_with_iv(iv: [u32; 4], m0: [u32; 32], m1: [u32; 32])  -> i32
+fn md5coll_with_iv(iv: [u32; 4])  -> std::io::Result<()>
 {
     let mut ret: i32;
     let mut ct1: i32 = 0;
@@ -2094,11 +2084,12 @@ fn md5coll_with_iv(iv: [u32; 4], m0: [u32; 32], m1: [u32; 32])  -> i32
             break;
         }
     }
+
     println!("unsigned int m0[32] = {{");
     for i in 0..32
     {
         print!("{:#08x}, ", s.x0[i]);
-        if ((i & 3) == 3)
+        if (i & 3) == 3
         {
             println!("");
         }
@@ -2108,27 +2099,35 @@ fn md5coll_with_iv(iv: [u32; 4], m0: [u32; 32], m1: [u32; 32])  -> i32
     for i in 0..32
     {
         print!("{:#08x}, ", s.x1[i]);
-        if ((i & 3) == 3)
+        if (i & 3) == 3
         {
             println!("");
         }
     }
     println!("}};\n");
-    //let mut file = File::create("file1.bin")?;
-    //file.write_all(&s.x1.as_ref())?;
-    return 0;
+    let mut file1 = File::create("m0.bin").unwrap();
+    let mut file2 = File::create("m1.bin").unwrap();
+    for i in 0..32
+    {
+        file1.write_all(&s.x0[i].to_le_bytes()).expect("Failed to write in m0.bin");
+        file2.write_all(&s.x1[i].to_le_bytes()).expect("Failed to write in m1.bin");
+    }
+    
+    Ok(())
 }
 
 fn main() -> std::io::Result<()>
 {
     println!("MD5 Collision in Rust Program Started");
     let args: Vec<String> = env::args().collect();
-
-    //let option = &args[1];
-    //let filename = &args[2];
-    //let file = File::open(filename)?;
-    let mut a: u32 = 5;
-    let mut iv : [u32; 4] = [0; 4];
+    let mut iv: [u32; 4] = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476];
+    if args.len() > 1
+    {
+        iv[0] = u32::from_str_radix(args[1].trim_start_matches("0x"), 16).unwrap();
+        iv[1] = u32::from_str_radix(args[2].trim_start_matches("0x"), 16).unwrap();
+        iv[2] = u32::from_str_radix(args[3].trim_start_matches("0x"), 16).unwrap();
+        iv[3] = u32::from_str_radix(args[4].trim_start_matches("0x"), 16).unwrap();
+    }
     extern crate num_cpus;
     let num = num_cpus::get();
     let items: Vec<_> = iter::repeat(0).take(num - 1).collect();
@@ -2137,12 +2136,12 @@ fn main() -> std::io::Result<()>
         .into_iter()
         .map(|_| {
             thread::spawn(move || {
-                println!("Thread {:?} started!", thread::current().id());
+                println!("{:?}: started!", thread::current().id());
                 let start = SystemTime::now();
-                let m0: [u32; 32] = [0; 32];
-                let m1: [u32; 32] = [0; 32];
-                md5coll_with_iv(IV_DEFAULT, m0, m1);
-                println!("Thread {:?} finished!", thread::current().id());
+                
+                assert!(md5coll_with_iv(iv).is_ok());
+                
+                println!("{:?}: finished!", thread::current().id());
                 let end = SystemTime::now();
                 let elapsed = end.duration_since(start);
                 println!("\n\tExecution time: {} minutes\n", elapsed.unwrap_or_default().as_secs()/60);
